@@ -24,6 +24,7 @@ pub struct WindowConfig {
     pub(crate) undecorated: Option<bool>,
     pub(crate) window_level: Option<WindowLevel>,
     pub(crate) apply_default_theme: Option<bool>,
+    #[allow(dead_code)]
     pub(crate) mac_os_config: Option<MacOSWindowConfig>,
 }
 
