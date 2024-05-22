@@ -22,9 +22,15 @@ pub struct WindowConfig {
     pub(crate) resizable: Option<bool>,
     pub(crate) window_level: Option<WindowLevel>,
     pub(crate) apply_default_theme: Option<bool>,
+    pub(crate) undecorated: Option<bool>,
 }
 
 impl WindowConfig {
+    pub fn undecorated(mut self, undecorated: bool) -> Self {
+        self.undecorated = Some(undecorated);
+        self
+    }
+
     pub fn size(mut self, size: impl Into<Size>) -> Self {
         self.size = Some(size.into());
         self
