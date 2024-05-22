@@ -24,7 +24,6 @@ pub struct WindowConfig {
     pub(crate) undecorated: Option<bool>,
     pub(crate) window_level: Option<WindowLevel>,
     pub(crate) apply_default_theme: Option<bool>,
-    #[allow(dead_code)]
     pub(crate) mac_os_config: Option<MacOSWindowConfig>,
 }
 
@@ -224,9 +223,9 @@ pub enum MacOsOptionAsAlt {
 }
 
 #[cfg(target_os = "macos")]
-impl From<MacOsOptionAsAlt> for floem_winit::platform::macos::OptionAsAlt {
-    fn from(opts: MacOsOptionAsAlt) -> floem_winit::platform::macos::OptionAsAlt {
-        match opts {
+impl Into<floem_winit::platform::macos::OptionAsAlt> for MacOsOptionAsAlt {
+    fn into(self) -> floem_winit::platform::macos::OptionAsAlt {
+        match self {
             MacOsOptionAsAlt::OnlyLeft => floem_winit::platform::macos::OptionAsAlt::OnlyLeft,
             MacOsOptionAsAlt::OnlyRight => floem_winit::platform::macos::OptionAsAlt::OnlyRight,
             MacOsOptionAsAlt::Both => floem_winit::platform::macos::OptionAsAlt::Both,
