@@ -87,7 +87,7 @@ impl ViewId {
         })
     }
 
-    pub(crate) fn view(&self) -> Rc<RefCell<Box<dyn View>>> {
+    pub fn view(&self) -> Rc<RefCell<Box<dyn View>>> {
         VIEW_STORAGE.with_borrow(|s| {
             s.views
                 .get(*self)
