@@ -1,12 +1,10 @@
 //! Tools for computing screen locations from locations within a View and
 //! vice-versa.
-use std::sync::Arc;
 
 use crate::ViewId;
 use crate::WindowIdentifier;
 use crate::window_tracking::NativeWindow;
 use peniko::kurbo::{Point, Rect, Size};
-use winit::window::Window;
 
 use crate::window_tracking::{
     monitor_bounds_for_monitor, rect_from_physical_bounds_for_window, with_window_id_and_window,

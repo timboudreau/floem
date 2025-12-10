@@ -4,17 +4,14 @@ use crate::{
     window_id_ext::{WindowIdExtSealed, WindowUpdate},
     window_tracking::{NativeWindow, force_window_repaint, with_window},
 };
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap};
 
 use super::window_tracking::{
     monitor_bounds, root_view_id, window_inner_screen_bounds, window_inner_screen_position,
     window_outer_screen_bounds, window_outer_screen_position,
 };
 use peniko::kurbo::{Point, Rect, Size};
-use winit::{
-    dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Pixel},
-    window::Window,
-};
+use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Pixel};
 
 // Using thread_local for consistency with static vars in updates.rs, but I suspect these
 // are thread_local not because thread-locality is desired, but only because static mutability is

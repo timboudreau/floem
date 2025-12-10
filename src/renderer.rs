@@ -47,8 +47,6 @@
 //! - Only one view can be active at a time.
 //! - Only one view can be focused at a time.
 //!
-use std::sync::Arc;
-
 use crate::kurbo::Point;
 use crate::window_tracking::NativeWindow;
 use floem_renderer::Img;

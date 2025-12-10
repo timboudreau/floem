@@ -5,11 +5,9 @@ use peniko::kurbo::{Affine, Point, Rect, RoundedRect, Shape, Size, Vec2};
 use std::{
     ops::{Deref, DerefMut},
     rc::Rc,
-    sync::Arc,
 };
 use ui_events::keyboard::{KeyState, KeyboardEvent};
 use ui_events::pointer::{PointerButton, PointerButtonEvent, PointerEvent, PointerUpdate};
-use winit::window::Window;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};

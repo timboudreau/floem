@@ -21,7 +21,6 @@ use winit::{
     cursor::CursorIcon,
     dpi::{LogicalPosition, LogicalSize},
     event::Ime,
-    window::Window,
 };
 
 use crate::WindowIdentifier;
