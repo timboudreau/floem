@@ -186,9 +186,7 @@ mod app_handle;
 mod border_path_iter;
 mod clipboard;
 pub mod context;
-pub mod dropped_file;
 pub mod easing;
-pub mod event;
 pub mod ext_event;
 pub mod file;
 #[cfg(any(feature = "rfd-async-std", feature = "rfd-tokio"))]
@@ -231,6 +229,7 @@ pub mod receiver_signal {
 
 pub use app::{AppConfig, AppEvent, Application, launch, quit_app, reopen};
 pub use clipboard::{Clipboard, ClipboardError};
+pub use event;
 pub use floem_reactive as reactive;
 pub use floem_renderer::Renderer;
 pub use floem_renderer::Svg as RendererSvg;

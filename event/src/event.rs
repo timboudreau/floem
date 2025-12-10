@@ -6,6 +6,7 @@ use ui_events::{
         PointerButtonEvent, PointerEvent, PointerGestureEvent, PointerScrollEvent, PointerUpdate,
     },
 };
+#[cfg(feature = "winit")]
 use winit::window::Theme;
 
 use crate::dropped_file::{self, FileDragEvent};
@@ -84,6 +85,7 @@ pub enum EventListener {
     FocusGained,
     /// Receives [`Event::FocusLost`]
     FocusLost,
+    #[cfg(feature = "winit")]
     /// Receives [`Event::ThemeChanged`]
     ThemeChanged,
     /// Receives [`Event::WindowClosed`]
@@ -122,6 +124,7 @@ pub enum Event {
     WindowResized(Size),
     WindowMoved(Point),
     WindowMaximizeChanged(bool),
+    #[cfg(feature = "winit")]
     ThemeChanged(Theme),
     FocusGained,
     FocusLost,
@@ -133,22 +136,22 @@ impl Event {
         matches!(self, Event::Key(_))
     }
 
-    pub(crate) fn is_pointer(&self) -> bool {
+    pub fn is_pointer(&self) -> bool {
         matches!(self, Event::Pointer(_))
     }
 
     #[allow(unused)]
-    pub(crate) fn is_pointer_down(&self) -> bool {
+    pub fn is_pointer_down(&self) -> bool {
         matches!(self, Event::Pointer(PointerEvent::Down { .. }))
     }
 
     #[allow(unused)]
-    pub(crate) fn is_pointer_up(&self) -> bool {
+    pub fn is_pointer_up(&self) -> bool {
         matches!(self, Event::Pointer(PointerEvent::Up { .. }))
     }
 
     /// Enter, numpad enter and space cause a view to be activated with the keyboard
-    pub(crate) fn is_keyboard_trigger(&self) -> bool {
+    pub fn is_keyboard_trigger(&self) -> bool {
         match self {
             Event::Key(key) => {
                 matches!(key.code, Code::NumpadEnter | Code::Enter | Code::Space)
@@ -159,8 +162,9 @@ impl Event {
 
     pub fn allow_disabled(&self) -> bool {
         match self {
+            #[cfg(feature = "winit")]
+            Event::ThemeChanged(_) => true,
             Event::Pointer(PointerEvent::Leave(_) | PointerEvent::Move(_))
-            | Event::ThemeChanged(_)
             | Event::WindowClosed
             | Event::WindowResized(_)
             | Event::WindowMoved(_)
@@ -240,6 +244,8 @@ impl Event {
 
     pub fn transform(mut self, transform: Affine) -> Event {
         match &mut self {
+            #[cfg(feature = "winit")]
+            Event::ThemeChanged(_) => (),
             Event::Pointer(
                 PointerEvent::Down(PointerButtonEvent { state, .. })
                 | PointerEvent::Up(PointerButtonEvent { state, .. })
@@ -291,7 +297,6 @@ impl Event {
             | Event::ImeEnabled
             | Event::ImeDisabled
             | Event::ImePreedit { .. }
-            | Event::ThemeChanged(_)
             | Event::ImeCommit(_)
             | Event::WindowClosed
             | Event::WindowResized(_)
@@ -335,6 +340,7 @@ impl Event {
             Event::WindowLostFocus => Some(EventListener::WindowLostFocus),
             Event::FocusLost => Some(EventListener::FocusLost),
             Event::FocusGained => Some(EventListener::FocusGained),
+            #[cfg(feature = "winit")]
             Event::ThemeChanged(_) => Some(EventListener::ThemeChanged),
             Event::FileDrag(FileDragEvent::DragDropped { .. }) => Some(EventListener::DroppedFiles),
             _ => None, // TODO

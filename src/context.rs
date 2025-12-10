@@ -24,7 +24,6 @@ use std::sync::mpsc::Receiver;
 use taffy::prelude::NodeId;
 
 use crate::animate::{AnimStateKind, RepeatMode};
-use crate::dropped_file::FileDragEvent;
 use crate::easing::{Easing, Linear};
 use crate::menu::Menu;
 use crate::renderer::Renderer;
@@ -40,6 +39,7 @@ use crate::{
     view_state::ChangeFlags,
     window_state::WindowState,
 };
+use event::FileDragEvent;
 
 pub type EventCallback = dyn FnMut(&Event) -> EventPropagation;
 pub type ResizeCallback = dyn Fn(Rect);

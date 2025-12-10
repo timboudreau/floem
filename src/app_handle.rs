@@ -25,7 +25,7 @@ use crate::{
     action::{Timer, TimerToken},
     app::{APP_UPDATE_EVENTS, AppEventCallback, AppUpdateEvent, UserEvent},
     context::PaintState,
-    dropped_file::FileDragEvent::{self, DragDropped},
+    event::FileDragEvent::{self, DragDropped},
     ext_event::EXT_EVENT_HANDLER,
     inspector::Capture,
     profiler::{Profile, ProfileEvent},

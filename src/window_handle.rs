@@ -24,7 +24,6 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::dropped_file::FileDragEvent;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::menu::MudaMenu;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -55,6 +54,7 @@ use crate::{
     window_state::WindowState,
     window_tracking::{remove_window_id_mapping, store_window_id_mapping},
 };
+use event::FileDragEvent;
 
 /// The top-level window handle that owns the winit `Window`.
 /// Meant only for use with the root view of the application.

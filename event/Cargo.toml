@@ -1,0 +1,18 @@
+[package]
+name = "event"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+winit = ["dep:winit"]
+
+[dependencies]
+keyboard-types = "0.8.3"
+ui-events = { workspace = true, features = ["std"] }
+peniko.workspace = true
+winit = { workspace = true, optional = true }
+dpi.workspace = true

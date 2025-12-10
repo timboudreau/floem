@@ -9,6 +9,8 @@ members = [
   "editor-core",
   "examples/*",
   "ui-events-winit",
+  # "ui-events-baseview",
+  "event",
 ]
 default-members = [
   ".",
@@ -19,6 +21,8 @@ default-members = [
   "reactive",
   "editor-core",
   "ui-events-winit",
+  # "ui-events-baseview",
+  "event",
 ]
 
 [workspace.package]
@@ -99,6 +103,7 @@ futures = { version = "0.3.31" }
 crossbeam = { version = "0.8", optional = true }
 ui-events.workspace = true
 ui-events-winit.workspace = true
+event = { path = "event", features = [ "winit" ] } # Fixme - only if baseview absent
 dpi.workspace = true
 wgpu.workspace = true
 fluent-bundle = { version = "0.16", optional = true }
