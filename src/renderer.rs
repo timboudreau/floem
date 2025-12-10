@@ -50,6 +50,7 @@
 use std::sync::Arc;
 
 use crate::kurbo::Point;
+use crate::window_tracking::NativeWindow;
 use floem_renderer::Img;
 use floem_renderer::gpu_resources::GpuResources;
 use floem_renderer::text::LayoutRun;
@@ -60,7 +61,6 @@ use floem_vello_renderer::VelloRenderer;
 use floem_vger_renderer::VgerRenderer;
 use peniko::BrushRef;
 use peniko::kurbo::{Affine, Rect, Shape, Size, Stroke};
-use winit::window::Window;
 
 #[allow(clippy::large_enum_variant)]
 pub enum Renderer {
@@ -68,7 +68,7 @@ pub enum Renderer {
     Vello(VelloRenderer),
     #[cfg(not(feature = "vello"))]
     Vger(VgerRenderer),
-    TinySkia(TinySkiaRenderer<Arc<dyn Window>>),
+    TinySkia(TinySkiaRenderer<NativeWindow>),
     /// Uninitialized renderer, used to allow the renderer to be created lazily
     /// All operations on this renderer are no-ops
     Uninitialized {
@@ -79,7 +79,7 @@ pub enum Renderer {
 
 impl Renderer {
     pub fn new(
-        window: Arc<dyn Window>,
+        window: NativeWindow,
         gpu_resources: GpuResources,
         surface: wgpu::Surface<'static>,
         scale: f64,

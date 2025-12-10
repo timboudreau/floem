@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::ViewId;
 use crate::WindowIdentifier;
+use crate::window_tracking::NativeWindow;
 use peniko::kurbo::{Point, Rect, Size};
 use winit::window::Window;
 
@@ -54,7 +55,7 @@ pub fn try_create_screen_layout(view: &ViewId) -> Option<ScreenLayout> {
 
 pub fn screen_layout_for_window(
     window_id: WindowIdentifier,
-    window: &Arc<dyn Window>,
+    window: &NativeWindow,
 ) -> Option<ScreenLayout> {
     window.current_monitor().and_then(|monitor| {
         let inner_position = window.surface_position();

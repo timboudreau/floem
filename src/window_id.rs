@@ -2,7 +2,7 @@ use crate::{
     ScreenLayout, ViewId, WindowIdExt, WindowIdentifier,
     screen_layout::screen_layout_for_window,
     window_id_ext::{WindowIdExtSealed, WindowUpdate},
-    window_tracking::{force_window_repaint, with_window},
+    window_tracking::{NativeWindow, force_window_repaint, with_window},
 };
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
@@ -200,7 +200,7 @@ pub(crate) fn process_window_updates(id: &WindowIdentifier) -> bool {
 /// inner size and outer position based on a `Rect` that represents either inner or
 /// outer.
 fn bounds_to_logical_outer_position_and_inner_size(
-    window: &Arc<dyn Window>,
+    window: &NativeWindow,
     target_bounds: Rect,
     target_is_outer: bool,
 ) -> (LogicalPosition<f64>, LogicalSize<f64>) {
@@ -262,7 +262,7 @@ fn bounds_to_logical_outer_position_and_inner_size(
 /// issue is below the level of floem's event loops and seems to be in winit or
 /// deeper.  Workaround is to force the window to repaint.
 #[allow(unused_variables)] // non mac builds see `window` as unused
-fn maybe_yield_with_repaint(window: &Arc<dyn Window>) {
+fn maybe_yield_with_repaint(window: &NativeWindow) {
     #[cfg(target_os = "macos")]
     {
         window.request_redraw();

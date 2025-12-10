@@ -29,6 +29,7 @@ use crate::menu::Menu;
 use crate::renderer::Renderer;
 use crate::style::{Disabled, DisplayProp, Focusable, Hidden, PointerEvents, PointerEventsProp};
 use crate::view_state::IsHiddenState;
+use crate::window_tracking::NativeWindow;
 use crate::{
     action::{exec_after, show_context_menu},
     event::{Event, EventListener, EventPropagation},
@@ -1075,7 +1076,7 @@ pub struct PaintCx<'a> {
     pub(crate) saved_clips: Vec<Option<RoundedRect>>,
     pub(crate) saved_z_indexes: Vec<Option<i32>>,
     pub gpu_resources: Option<GpuResources>,
-    pub window: Arc<dyn Window>,
+    pub window: NativeWindow,
     #[cfg(feature = "vello")]
     pub layer_count: usize,
     #[cfg(feature = "vello")]
@@ -1363,7 +1364,7 @@ impl PaintCx<'_> {
 pub enum PaintState {
     /// The renderer is not yet initialized. This state is used to wait for the GPU resources to be acquired.
     PendingGpuResources {
-        window: Arc<dyn Window>,
+        window: NativeWindow,
         rx: Receiver<Result<(GpuResources, wgpu::Surface<'static>), GpuResourceError>>,
         font_embolden: f32,
         /// This field holds an instance of `Renderer::Uninitialized` until the GPU resources are acquired,
@@ -1380,7 +1381,7 @@ pub enum PaintState {
 
 impl PaintState {
     pub fn new_pending(
-        window: Arc<dyn Window>,
+        window: NativeWindow,
         rx: Receiver<Result<(GpuResources, wgpu::Surface<'static>), GpuResourceError>>,
         scale: f64,
         size: Size,
@@ -1395,7 +1396,7 @@ impl PaintState {
     }
 
     pub fn new(
-        window: Arc<dyn Window>,
+        window: NativeWindow,
         surface: wgpu::Surface<'static>,
         gpu_resources: GpuResources,
         scale: f64,

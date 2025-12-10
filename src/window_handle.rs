@@ -33,6 +33,7 @@ use crate::reactive::SignalWith;
 use crate::unit::UnitExt;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::views::{Decorators, container, stack};
+use crate::window_tracking::NativeWindow;
 use crate::{
     Application,
     app::UserEvent,
@@ -64,7 +65,7 @@ use event::FileDragEvent;
 /// - processing all requests to update the animation state from the reactive system
 /// - requesting a new animation frame from the backend
 pub(crate) struct WindowHandle {
-    pub(crate) window: Arc<dyn winit::window::Window>,
+    pub(crate) window: NativeWindow,
     window_id: WindowIdentifier,
     id: ViewId,
     main_view: ViewId,
@@ -142,7 +143,7 @@ impl WindowHandle {
         let view = WindowView { id };
         id.set_view(view.into_any());
 
-        let window: Arc<dyn Window> = window.into();
+        let window: NativeWindow = window.into();
         store_window_id_mapping(id, window_id.into(), &window);
 
         let paint_state = if let Some(resources) = gpu_resources.clone() {
