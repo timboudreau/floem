@@ -210,6 +210,7 @@ pub mod view_tuple;
 pub mod views;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
+mod window_id_ext;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub mod window_baseview;
@@ -256,7 +257,7 @@ pub use window::{close_window, new_window};
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub use window_baseview::{WindowConfig, close_window, new_window};
 
-pub use window_id::{Urgency, WindowIdExt};
+pub use window_id_ext::{Urgency, WindowIdExt};
 pub use window_state::WindowState;
 
 pub mod prelude {
