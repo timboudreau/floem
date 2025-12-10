@@ -1,6 +1,9 @@
 pub mod swash;
 pub mod text;
 
+#[cfg(feature = "baseview")]
+mod baseview_utils;
+
 use crate::text::LayoutRun;
 use peniko::{
     kurbo::{Affine, Point, Rect, Shape, Stroke},
@@ -11,6 +14,9 @@ pub use resvg::usvg;
 use text::TextLayout;
 
 pub mod gpu_resources;
+
+#[cfg(all(feature = "winit", feature = "baseview"))]
+compile_error!("feature \"winit\" and feature \"baseview\" are mutually exclusive");
 
 pub struct Svg<'a> {
     pub tree: &'a usvg::Tree,

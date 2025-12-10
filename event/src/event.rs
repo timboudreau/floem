@@ -104,6 +104,8 @@ pub enum EventListener {
     WindowScaleChanged,
     /// Receives [`Event::DroppedFile`]
     DroppedFiles,
+    #[cfg(not(feature = "winit"))]
+    WindowWillClose,
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +131,8 @@ pub enum Event {
     FocusGained,
     FocusLost,
     WindowScaleChanged(f64),
+    #[cfg(not(feature = "winit"))]
+    WindowWillClose,
 }
 
 impl Event {
@@ -186,6 +190,8 @@ impl Event {
                 | FileDragEvent::DragLeft { .. },
             )
             | Event::Key(_) => false,
+            #[cfg(not(feature = "winit"))]
+            Event::WindowWillClose => true,
         }
     }
 
@@ -305,6 +311,10 @@ impl Event {
             | Event::WindowScaleChanged(_)
             | Event::WindowGotFocus
             | Event::WindowLostFocus => {}
+            #[cfg(not(feature = "winit"))]
+            /// See discussion here for the necessity of this:
+            /// https://github.com/RustAudio/baseview/issues/124#issuecomment-1374100419
+            Event::WindowWillClose => (),
         }
         self
     }
@@ -343,6 +353,8 @@ impl Event {
             #[cfg(feature = "winit")]
             Event::ThemeChanged(_) => Some(EventListener::ThemeChanged),
             Event::FileDrag(FileDragEvent::DragDropped { .. }) => Some(EventListener::DroppedFiles),
+            #[cfg(not(feature = "winit"))]
+            WindowWillClose => Some(EventListener::WindowWillClose),
             _ => None, // TODO
         }
     }

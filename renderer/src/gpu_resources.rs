@@ -16,7 +16,11 @@ use crossbeam::channel::{bounded as sync_channel, Receiver};
 use std::sync::mpsc::{sync_channel, Receiver};
 use wgpu::Backends;
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::window::{Window, WindowId};
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+use baseview::WindowHandle;
 
 /// The acquired GPU resources needed for rendering with wgpu.
 #[derive(Debug, Clone)]
@@ -40,6 +44,7 @@ pub struct GpuResources {
 }
 
 impl GpuResources {
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
     /// Request GPU resources
     ///
     /// # Parameters
@@ -106,6 +111,73 @@ impl GpuResources {
             }
         });
         rx
+    }
+
+    #[cfg(all(feature = "baseview", not(feature = "winit")))]
+    pub fn request<F: Fn(WindowHandle) + 'static>(
+        on_result: F,
+        required_features: wgpu::Features,
+        window: Arc<baseview::Window>,
+    ) -> Receiver<Result<(Self, wgpu::Surface<'static>), GpuResourceError>> {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: Backends::from_env().unwrap_or(Backends::all()),
+            ..Default::default()
+        });
+        todo!()
+        // Channel passing to do async out-of-band within the winit event_loop since wasm can't
+        // execute futures with a return value
+        /*
+        let (tx, rx) = sync_channel(1);
+
+        spawn({
+            async move {
+                let surface = match instance.create_surface(Arc::clone(&window)) {
+                    Ok(surface) => surface,
+                    Err(err) => {
+                        tx.send(Err(GpuResourceError::SurfaceCreationError(err)))
+                            .unwrap();
+                        on_result(window.id());
+                        return;
+                    }
+                };
+
+                let Ok(adapter) = instance
+                    .request_adapter(&wgpu::RequestAdapterOptions {
+                        power_preference: wgpu::PowerPreference::default(),
+                        compatible_surface: Some(&surface),
+                        force_fallback_adapter: false,
+                    })
+                    .await
+                else {
+                    tx.send(Err(GpuResourceError::AdapterNotFoundError))
+                        .unwrap();
+                    on_result(window.id());
+                    return;
+                };
+
+                tx.send(
+                    adapter
+                        .request_device(&wgpu::DeviceDescriptor {
+                            label: None,
+                            required_features,
+                            ..Default::default()
+                        })
+                        .await
+                        .map_err(GpuResourceError::DeviceRequestError)
+                        .map(|(device, queue)| Self {
+                            adapter,
+                            device,
+                            queue,
+                            instance,
+                        })
+                        .map(|res| (res, surface)),
+                )
+                .unwrap();
+                on_result(window.id());
+            }
+        });
+        rx
+        */
     }
 }
 

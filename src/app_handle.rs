@@ -2,7 +2,13 @@ use dpi::PhysicalPosition;
 use floem_renderer::gpu_resources::GpuResources;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use ui_events_winit::WindowEventTranslation;
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+use ui_events_baseview::WindowEventTranslation;
+
 #[cfg(target_arch = "wasm32")]
 use web_time::Instant;
 

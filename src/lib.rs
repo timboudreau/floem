@@ -208,7 +208,12 @@ pub(crate) mod view_state;
 pub(crate) mod view_storage;
 pub mod view_tuple;
 pub mod views;
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+pub mod window_baseview;
+
 mod window_handle;
 mod window_id;
 pub(crate) mod window_state;
@@ -245,7 +250,12 @@ pub use taffy;
 pub use ui_events;
 pub use view::{AnyView, IntoView, View, default_compute_layout, recursively_layout_view};
 pub use view_state::{Stack, StackOffset};
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub use window::{close_window, new_window};
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+pub use window_baseview::{WindowConfig, close_window, new_window};
+
 pub use window_id::{Urgency, WindowIdExt};
 pub use window_state::WindowState;
 
@@ -266,3 +276,6 @@ pub mod prelude {
         pointer::{PointerButtonEvent, PointerEvent},
     };
 }
+
+#[cfg(all(feature = "winit", feature = "baseview"))]
+compile_error!("feature \"winit\" and feature \"baseview\" are mutually exclusive");

@@ -60,8 +60,10 @@ parking_lot = { version = "0.12" }
 swash = { version = "0.2" }
 muda = { version = "0.17.1", default-features = false }
 winit = { git = "https://github.com/lapce/winit", rev = "133268de675a4fda70816d78a7a1435eb972fea1", package = "floem-winit" }
+baseview = { git = "https://github.com/timboudreau/baseview.git", rev = "9a44f327979de7a57eed41a1f86eb9ee1b78df16" }
 ui-events = { version = "0.2", features = ["kurbo"] }
 ui-events-winit = { path = "./ui-events-winit", package = "ui-events-floem-winit" }
+ui-events-baseview = { path = "./ui-events-baseview" }
 dpi = { version = "0.1.2", default-features = false }
 
 [dependencies]
@@ -98,11 +100,14 @@ copypasta = { version = "0.10", default-features = false, features = [
 ] }
 parking_lot = { workspace = true }
 image = { workspace = true }
-winit = { workspace = true }
+winit = { workspace = true, optional = true }
+baseview = { workspace = true, optional = true}
+
 futures = { version = "0.3.31" }
 crossbeam = { version = "0.8", optional = true }
 ui-events.workspace = true
-ui-events-winit.workspace = true
+ui-events-winit = { workspace = true, optional = true }
+ui-events-baseview = { workspace = true, optional = true }
 event = { path = "event", features = [ "winit" ] } # Fixme - only if baseview absent
 dpi.workspace = true
 wgpu.workspace = true
@@ -135,6 +140,8 @@ objc2-app-kit = { version = "0.3", features = [
 
 [features]
 default = ["editor", "default-image-formats", "vger"]
+winit = ["dep:winit", "dep:ui-events-winit", "event/winit", "floem_renderer/winit"]
+baseview = ["dep:baseview", "dep:ui-events-baseview", "floem_renderer/baseview"]
 vello = ["dep:floem_vello_renderer"]
 vger = ["dep:floem_vger_renderer"]
 serde = [
