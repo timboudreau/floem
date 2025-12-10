@@ -17,11 +17,13 @@ use winit::{
 
 static WINDOW_FOR_WINDOW_AND_ROOT_IDS: OnceLock<RwLock<WindowMapping>> = OnceLock::new();
 
+pub type NativeWindow = Arc<dyn Window>;
+
 /// Add a mapping from `root_id` -> `window_id` -> `window` for the given triple.
 pub fn store_window_id_mapping(
     root_id: ViewId,
     window_id: WindowIdentifier,
-    window: &Arc<dyn winit::window::Window>,
+    window: &NativeWindow,
 ) {
     with_window_map_mut(move |m| m.add(root_id, window_id, window.clone()));
 }
@@ -35,17 +37,12 @@ pub fn remove_window_id_mapping(root_id: &ViewId, window_id: &WindowIdentifier) 
 /// from that locate the window-id (if any) that it belongs to.
 #[derive(Default)]
 struct WindowMapping {
-    window_for_window_id: HashMap<WindowIdentifier, Arc<dyn Window>>,
+    window_for_window_id: HashMap<WindowIdentifier, NativeWindow>,
     window_id_for_root_view_id: HashMap<ViewId, WindowIdentifier>,
 }
 
 impl WindowMapping {
-    fn add(
-        &mut self,
-        root: ViewId,
-        window_id: impl Into<WindowIdentifier>,
-        window: Arc<dyn Window>,
-    ) {
+    fn add(&mut self, root: ViewId, window_id: impl Into<WindowIdentifier>, window: NativeWindow) {
         let id = window_id.into();
         self.window_for_window_id.insert(id, window);
         self.window_id_for_root_view_id.insert(root, id);
@@ -60,7 +57,7 @@ impl WindowMapping {
         );
     }
 
-    fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &Arc<dyn Window>) -> T, T>(
+    fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> T, T>(
         &self,
         root_view_id: ViewId,
         f: F,
@@ -74,7 +71,7 @@ impl WindowMapping {
             })
     }
 
-    fn with_window<F: FnOnce(&Arc<dyn Window>) -> T, T>(
+    fn with_window<F: FnOnce(&NativeWindow) -> T, T>(
         &self,
         window: &WindowIdentifier,
         f: F,
@@ -96,7 +93,7 @@ impl WindowMapping {
     }
 }
 
-pub fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &Arc<dyn Window>) -> T, T>(
+pub fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> T, T>(
     view: &ViewId,
     f: F,
 ) -> Option<T> {
@@ -128,10 +125,7 @@ fn with_window_map<F: FnOnce(&WindowMapping) -> T, T>(f: F) -> Option<T> {
     }
 }
 
-pub fn with_window<F: FnOnce(&Arc<dyn Window>) -> T, T>(
-    window: &WindowIdentifier,
-    f: F,
-) -> Option<T> {
+pub fn with_window<F: FnOnce(&NativeWindow) -> T, T>(window: &WindowIdentifier, f: F) -> Option<T> {
     with_window_map(|m| m.with_window(window, |w| f(w))).unwrap_or(None)
 }
 
@@ -166,7 +160,7 @@ pub fn monitor_bounds(id: &WindowIdentifier) -> Option<Rect> {
     .unwrap_or(None)
 }
 
-pub fn monitor_bounds_for_monitor(window: &Arc<dyn Window>, monitor: &MonitorHandle) -> Rect {
+pub fn monitor_bounds_for_monitor(window: &NativeWindow, monitor: &MonitorHandle) -> Rect {
     let scale = 1.0 / window.scale_factor();
     let pos = monitor.position().unwrap_or_default();
     let sz = monitor
@@ -183,7 +177,7 @@ pub fn monitor_bounds_for_monitor(window: &Arc<dyn Window>, monitor: &MonitorHan
     )
 }
 
-fn scale_rect(window: &Arc<dyn Window>, mut rect: Rect) -> Rect {
+fn scale_rect(window: &NativeWindow, mut rect: Rect) -> Rect {
     let scale = 1.0 / window.scale_factor();
     rect.x0 *= scale;
     rect.y0 *= scale;
@@ -192,7 +186,7 @@ fn scale_rect(window: &Arc<dyn Window>, mut rect: Rect) -> Rect {
     rect
 }
 
-fn scale_point(window: &Arc<dyn Window>, mut rect: Point) -> Point {
+fn scale_point(window: &NativeWindow, mut rect: Point) -> Point {
     let scale = 1.0 / window.scale_factor();
     rect.x *= scale;
     rect.y *= scale;
@@ -220,7 +214,7 @@ pub fn window_inner_screen_bounds(id: &WindowIdentifier) -> Option<Rect> {
 }
 
 pub fn rect_from_physical_bounds_for_window(
-    window: &Arc<dyn Window>,
+    window: &NativeWindow,
     pos: PhysicalPosition<i32>,
     sz: PhysicalSize<u32>,
 ) -> Rect {
