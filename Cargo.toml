@@ -9,7 +9,7 @@ members = [
   "editor-core",
   "examples/*",
   "ui-events-winit",
-  # "ui-events-baseview",
+  "ui-events-baseview",
   "event",
 ]
 default-members = [
@@ -21,7 +21,7 @@ default-members = [
   "reactive",
   "editor-core",
   "ui-events-winit",
-  # "ui-events-baseview",
+  "ui-events-baseview",
   "event",
 ]
 
