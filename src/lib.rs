@@ -211,6 +211,7 @@ pub mod views;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
 mod window_id_ext;
+mod window_identifier;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub mod window_baseview;
@@ -253,6 +254,7 @@ pub use view::{AnyView, IntoView, View, default_compute_layout, recursively_layo
 pub use view_state::{Stack, StackOffset};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub use window::{close_window, new_window};
+pub use window_identifier::*;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub use window_baseview::{WindowConfig, close_window, new_window};

@@ -1,7 +1,6 @@
 use peniko::kurbo::{Point, Rect, Size};
 #[cfg(feature = "winit")]
 use winit::window::UserAttentionType;
-// use winit::window::WindowId;
 
 use crate::{ScreenLayout, ViewId};
 

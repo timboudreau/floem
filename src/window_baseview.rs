@@ -1,5 +1,5 @@
 use crate::AnyView;
-use crate::WindowId;
+use crate::WindowIdentifier;
 use crate::app::{AppUpdateEvent, add_app_update_event};
 use crate::view::IntoView;
 use peniko::kurbo::Size;
