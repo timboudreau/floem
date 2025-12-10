@@ -29,13 +29,25 @@ impl WindowIdentifier {
 
 impl From<WindowId> for WindowIdentifier {
     fn from(id: WindowId) -> Self {
-        Self { id }
+        Self::new(id)
     }
 }
 
 impl From<WindowIdentifier> for WindowId {
     fn from(value: WindowIdentifier) -> Self {
         value.into_inner()
+    }
+}
+
+impl From<&WindowId> for WindowIdentifier {
+    fn from(id: &WindowId) -> Self {
+        Self::new(id.to_owned())
+    }
+}
+
+impl From<&WindowIdentifier> for WindowId {
+    fn from(value: &WindowIdentifier) -> Self {
+        value.id.to_owned()
     }
 }
 

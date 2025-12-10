@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use crate::ViewId;
+use crate::WindowIdentifier;
 use peniko::kurbo::{Point, Rect, Size};
-use winit::window::{Window, WindowId};
+use winit::window::Window;
 
 use crate::window_tracking::{
     monitor_bounds_for_monitor, rect_from_physical_bounds_for_window, with_window_id_and_window,
@@ -52,7 +53,7 @@ pub fn try_create_screen_layout(view: &ViewId) -> Option<ScreenLayout> {
 }
 
 pub fn screen_layout_for_window(
-    window_id: WindowId,
+    window_id: WindowIdentifier,
     window: &Arc<dyn Window>,
 ) -> Option<ScreenLayout> {
     window.current_monitor().and_then(|monitor| {
@@ -99,7 +100,7 @@ pub fn screen_layout_for_window(
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ScreenLayout {
     /// The window id
-    pub window_id: WindowId,
+    pub window_id: WindowIdentifier,
     /// The scaling of the monitor, if any
     pub monitor_scale: f64,
     /// The logical bounds of the monitor
@@ -109,7 +110,7 @@ pub struct ScreenLayout {
     /// The bounds of the window within the monitor's bounds
     pub window_bounds: Rect,
     /// The origin of the view within the window, if this `ScreenLayout` was
-    /// created from a `View` rather than a `WindowId` - needed for computing
+    /// created from a `View` rather than a `WindowIdentifier` - needed for computing
     /// relative offsets from, e.g., the location of a mouse click within
     /// a `View`.
     pub view_origin_in_window: Option<Point>,

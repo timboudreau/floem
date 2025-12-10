@@ -21,9 +21,10 @@ use winit::{
     cursor::CursorIcon,
     dpi::{LogicalPosition, LogicalSize},
     event::Ime,
-    window::{Window, WindowId},
+    window::Window,
 };
 
+use crate::WindowIdentifier;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::menu::MudaMenu;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -64,7 +65,7 @@ use event::FileDragEvent;
 /// - requesting a new animation frame from the backend
 pub(crate) struct WindowHandle {
     pub(crate) window: Arc<dyn winit::window::Window>,
-    window_id: WindowId,
+    window_id: WindowIdentifier,
     id: ViewId,
     main_view: ViewId,
     /// Reactive Scope for this `WindowHandle`
@@ -92,7 +93,7 @@ impl WindowHandle {
         window: Box<dyn winit::window::Window>,
         gpu_resources: Option<GpuResources>,
         required_features: wgpu::Features,
-        view_fn: impl FnOnce(winit::window::WindowId) -> Box<dyn View> + 'static,
+        view_fn: impl FnOnce(WindowIdentifier) -> Box<dyn View> + 'static,
         transparent: bool,
         apply_default_theme: bool,
         font_embolden: f32,
@@ -115,7 +116,7 @@ impl WindowHandle {
 
         #[cfg(not(any(target_os = "linux", target_os = "freebsd")))]
         let view = scope.enter(move || {
-            let main_view = view_fn(window_id);
+            let main_view = view_fn(window_id.into());
             let main_view_id = main_view.id();
             (main_view_id, main_view)
         });
@@ -142,7 +143,7 @@ impl WindowHandle {
         id.set_view(view.into_any());
 
         let window: Arc<dyn Window> = window.into();
-        store_window_id_mapping(id, window_id, &window);
+        store_window_id_mapping(id, window_id.into(), &window);
 
         let paint_state = if let Some(resources) = gpu_resources.clone() {
             let surface = resources
@@ -160,7 +161,9 @@ impl WindowHandle {
         } else {
             let gpu_resources_rx = GpuResources::request(
                 move |window_id| {
-                    Application::send_proxy_event(UserEvent::GpuResourcesUpdate { window_id });
+                    Application::send_proxy_event(UserEvent::GpuResourcesUpdate {
+                        window_id: window_id.into(),
+                    });
                 },
                 required_features,
                 window.clone(),
@@ -180,7 +183,7 @@ impl WindowHandle {
 
         let mut window_handle = Self {
             window,
-            window_id,
+            window_id: window_id.into(),
             id,
             main_view: main_view_id,
             scope,

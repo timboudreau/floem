@@ -22,12 +22,12 @@ use winit::{
     dpi::{LogicalPosition, LogicalSize},
     event::WindowEvent,
     event_loop::{ActiveEventLoop, ControlFlow},
-    window::{Theme, WindowId},
+    window::Theme,
 };
 
 use crate::app::AppConfig;
 use crate::{
-    AppEvent,
+    AppEvent, WindowIdentifier,
     action::{Timer, TimerToken},
     app::{APP_UPDATE_EVENTS, AppEventCallback, AppUpdateEvent, UserEvent},
     context::PaintState,
@@ -42,7 +42,7 @@ use crate::{
 };
 
 pub(crate) struct ApplicationHandle {
-    window_handles: HashMap<winit::window::WindowId, WindowHandle>,
+    window_handles: HashMap<WindowIdentifier, WindowHandle>,
     timers: HashMap<TimerToken, Timer>,
     pub(crate) event_listener: Option<Box<AppEventCallback>>,
     pub(crate) gpu_resources: Option<GpuResources>,
@@ -173,7 +173,7 @@ impl ApplicationHandle {
 
     pub(crate) fn handle_window_event(
         &mut self,
-        window_id: winit::window::WindowId,
+        window_id: WindowIdentifier,
         event: WindowEvent,
         event_loop: &dyn ActiveEventLoop,
     ) {
@@ -349,7 +349,7 @@ impl ApplicationHandle {
     pub(crate) fn new_window(
         &mut self,
         event_loop: &dyn ActiveEventLoop,
-        view_fn: Box<dyn FnOnce(WindowId) -> Box<dyn View>>,
+        view_fn: Box<dyn FnOnce(WindowIdentifier) -> Box<dyn View>>,
         override_theme: Option<Theme>,
         #[allow(unused_variables)] WindowConfig {
             size,
@@ -555,10 +555,10 @@ impl ApplicationHandle {
             apply_default_theme,
             font_embolden,
         );
-        self.window_handles.insert(window_id, window_handle);
+        self.window_handles.insert(window_id.into(), window_handle);
     }
 
-    fn close_window(&mut self, window_id: WindowId, event_loop: &dyn ActiveEventLoop) {
+    fn close_window(&mut self, window_id: WindowIdentifier, event_loop: &dyn ActiveEventLoop) {
         if let Some(handle) = self.window_handles.get_mut(&window_id) {
             handle.destroy();
         }
@@ -568,7 +568,7 @@ impl ApplicationHandle {
         }
     }
 
-    fn capture_window(&mut self, window_id: WindowId) -> Option<Capture> {
+    fn capture_window(&mut self, window_id: WindowIdentifier) -> Option<Capture> {
         self.window_handles
             .get_mut(&window_id)
             .map(|handle| handle.capture(self.gpu_resources.clone()))

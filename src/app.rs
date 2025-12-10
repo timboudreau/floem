@@ -6,6 +6,7 @@ use muda::MenuId;
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{Receiver, Sender, channel};
 
+use crate::WindowIdentifier;
 use floem_reactive::{Runtime, WriteSignal};
 use parking_lot::Mutex;
 use raw_window_handle::HasDisplayHandle;
@@ -105,7 +106,7 @@ pub(crate) enum UserEvent {
         has_visible_windows: bool,
     },
     GpuResourcesUpdate {
-        window_id: WindowId,
+        window_id: WindowIdentifier,
     },
 }
 
@@ -115,14 +116,14 @@ pub(crate) enum AppUpdateEvent {
         window_creation: WindowCreation,
     },
     CloseWindow {
-        window_id: WindowId,
+        window_id: WindowIdentifier,
     },
     CaptureWindow {
-        window_id: WindowId,
+        window_id: WindowIdentifier,
         capture: WriteSignal<Option<Rc<Capture>>>,
     },
     ProfileWindow {
-        window_id: WindowId,
+        window_id: WindowIdentifier,
         end_profile: Option<WriteSignal<Option<Rc<Profile>>>>,
     },
     RequestTimer {
@@ -181,7 +182,7 @@ impl ApplicationHandler for Application {
     ) {
         self.handle.handle_timer(event_loop);
         self.handle
-            .handle_window_event(window_id, event, event_loop);
+            .handle_window_event(window_id.into(), event, event_loop);
         if Runtime::has_pending_work() {
             Runtime::drain_pending_work();
         }
@@ -260,11 +261,11 @@ impl Application {
     /// `WindowConfig::default()`.
     pub fn window<V: IntoView + 'static>(
         mut self,
-        app_view: impl FnOnce(WindowId) -> V + 'static,
+        app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
         config: Option<WindowConfig>,
     ) -> Self {
         self.initial_windows.push(WindowCreation {
-            view_fn: Box::new(move |window_id: WindowId| app_view(window_id).into_any()),
+            view_fn: Box::new(move |window_id: WindowIdentifier| app_view(window_id).into_any()),
             config,
         });
         self

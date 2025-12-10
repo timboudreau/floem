@@ -14,7 +14,7 @@ pub enum Urgency {
     Informational,
 
     /// The default attention type (equivalent of passing `None` to `winit::Window::request_user_attention())`).
-    /// On some platforms (X11), it is necessary to call `WindowId.request_attention(Urgency::Default)` to stop
+    /// On some platforms (X11), it is necessary to call `WindowIdentifier.request_attention(Urgency::Default)` to stop
     /// the attention-seeking behavior of the window.
     #[default]
     Default,

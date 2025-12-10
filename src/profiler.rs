@@ -1,3 +1,4 @@
+use crate::WindowIdentifier;
 use crate::app::{AppUpdateEvent, add_app_update_event};
 use crate::event::{EventListener, EventPropagation};
 use crate::inspector::header;
@@ -14,7 +15,6 @@ use std::mem;
 use std::rc::Rc;
 use taffy::AlignItems;
 use taffy::style::FlexDirection;
-use winit::window::WindowId;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
@@ -276,7 +276,7 @@ thread_local! {
     };
 }
 
-pub fn profiler(window_id: WindowId) -> impl IntoView {
+pub fn profiler(window_id: WindowIdentifier) -> impl IntoView {
     let profiling = RwSignal::new(false);
     let profile = PROFILE.with(|c| *c);
 

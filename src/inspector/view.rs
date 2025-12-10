@@ -1,3 +1,4 @@
+use crate::WindowIdentifier;
 use crate::app::{AppUpdateEvent, add_app_update_event};
 use crate::event::{Event, EventListener, EventPropagation};
 use crate::inspector::data::{CapturedData, CapturedDatas};
@@ -25,9 +26,8 @@ use peniko::color::palette;
 use std::rc::Rc;
 use ui_events::keyboard::{self, KeyState, KeyboardEvent, NamedKey};
 use ui_events::pointer::{PointerButtonEvent, PointerEvent, PointerUpdate};
-use winit::window::WindowId;
 
-pub fn capture(window_id: WindowId) {
+pub fn capture(window_id: WindowIdentifier) {
     let capture = CAPTURE.with(|c| *c);
 
     if !RUNNING.get() {
@@ -100,7 +100,7 @@ pub fn capture(window_id: WindowId) {
 }
 
 fn inspector_view(
-    window_id: WindowId,
+    window_id: WindowIdentifier,
     capture_s: RwSignal<Option<Rc<Capture>>>,
     capture: &Option<Rc<Capture>>,
 ) -> impl IntoView {
@@ -131,7 +131,7 @@ fn inspector_view(
 }
 
 fn capture_view(
-    window_id: WindowId,
+    window_id: WindowIdentifier,
     capture_s: RwSignal<Option<Rc<Capture>>>,
     capture: Rc<Capture>,
 ) -> impl IntoView {

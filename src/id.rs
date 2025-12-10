@@ -6,10 +6,10 @@
 
 use std::{any::Any, cell::RefCell, rc::Rc};
 
+use crate::WindowIdentifier;
 use peniko::kurbo::{Insets, Point, Rect, Size};
 use slotmap::new_key_type;
 use taffy::{Display, Layout, NodeId, TaffyTree};
-use winit::window::WindowId;
 
 use crate::{
     ScreenLayout,
@@ -366,7 +366,7 @@ impl ViewId {
     }
 
     /// Get the window id of the window containing this view, if there is one.
-    pub fn window_id(&self) -> Option<WindowId> {
+    pub fn window_id(&self) -> Option<WindowIdentifier> {
         self.root().and_then(window_id_for_root)
     }
 

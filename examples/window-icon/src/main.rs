@@ -4,12 +4,12 @@ use floem::{
     kurbo::Size,
     new_window,
     prelude::*,
-    window::{Icon, RgbaIcon, WindowConfig, WindowId},
-    Application, IntoView, View,
+    window::{Icon, RgbaIcon, WindowConfig},
+    Application, IntoView, View, WindowIdentifier,
 };
 use std::path::Path;
 
-fn sub_window_view(id: WindowId) -> impl IntoView {
+fn sub_window_view(id: WindowIdentifier) -> impl IntoView {
     v_stack((
         label(move || String::from("This window has an icon from an SVG file."))
             .style(|s| s.font_size(30.0)),

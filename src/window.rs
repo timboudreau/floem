@@ -9,11 +9,12 @@ pub use winit::window::WindowId;
 pub use winit::window::WindowLevel;
 
 use crate::AnyView;
+use crate::WindowIdentifier;
 use crate::app::{AppUpdateEvent, add_app_update_event};
 use crate::view::IntoView;
 
 pub struct WindowCreation {
-    pub(crate) view_fn: Box<dyn FnOnce(WindowId) -> AnyView>,
+    pub(crate) view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>,
     pub(crate) config: Option<WindowConfig>,
 }
 
@@ -641,18 +642,18 @@ impl WebWindowConfig {
 /// Create a new window. You'll need to create Application first, otherwise it
 /// will panic.
 pub fn new_window<V: IntoView + 'static>(
-    app_view: impl FnOnce(WindowId) -> V + 'static,
+    app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
     config: Option<WindowConfig>,
 ) {
     add_app_update_event(AppUpdateEvent::NewWindow {
         window_creation: WindowCreation {
-            view_fn: Box::new(|window_id| app_view(window_id).into_any()),
+            view_fn: Box::new(|window_id| app_view(window_id.into()).into_any()),
             config,
         },
     });
 }
 
 /// request the window to be closed
-pub fn close_window(window_id: WindowId) {
+pub fn close_window(window_id: WindowIdentifier) {
     add_app_update_event(AppUpdateEvent::CloseWindow { window_id });
 }

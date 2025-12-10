@@ -1,5 +1,5 @@
 use crate::{
-    ScreenLayout, ViewId, WindowIdExt,
+    ScreenLayout, ViewId, WindowIdExt, WindowIdentifier,
     screen_layout::screen_layout_for_window,
     window_id_ext::{WindowIdExtSealed, WindowUpdate},
     window_tracking::{force_window_repaint, with_window},
@@ -13,7 +13,7 @@ use super::window_tracking::{
 use peniko::kurbo::{Point, Rect, Size};
 use winit::{
     dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Pixel},
-    window::{Window, WindowId},
+    window::Window,
 };
 
 // Using thread_local for consistency with static vars in updates.rs, but I suspect these
@@ -21,14 +21,14 @@ use winit::{
 // desired - but that's a patch for another day.
 thread_local! {
     /// Holding pen for window state changes, processed as part of the event loop cycle
-    pub(crate) static WINDOW_UPDATE_MESSAGES: RefCell<HashMap<WindowId, Vec<WindowUpdate>>> = Default::default();
+    pub(crate) static WINDOW_UPDATE_MESSAGES: RefCell<HashMap<WindowIdentifier, Vec<WindowUpdate>>> = Default::default();
 }
 
-pub(crate) fn retreive_window_updates(id: &WindowId) -> Option<Vec<WindowUpdate>> {
+pub(crate) fn retreive_window_updates(id: &WindowIdentifier) -> Option<Vec<WindowUpdate>> {
     WINDOW_UPDATE_MESSAGES.with_borrow_mut(|map| map.remove(id))
 }
 
-pub(crate) fn push_window_update(id: &WindowId, msg: WindowUpdate) {
+pub(crate) fn push_window_update(id: &WindowIdentifier, msg: WindowUpdate) {
     WINDOW_UPDATE_MESSAGES.with_borrow_mut(|map| match map.entry(*id) {
         std::collections::hash_map::Entry::Occupied(updates) => {
             updates.into_mut().push(msg);
@@ -39,13 +39,13 @@ pub(crate) fn push_window_update(id: &WindowId, msg: WindowUpdate) {
     });
 }
 
-impl WindowIdExtSealed for WindowId {
+impl WindowIdExtSealed for WindowIdentifier {
     fn add_window_update(&self, msg: WindowUpdate) {
         push_window_update(self, msg);
     }
 }
 
-impl WindowIdExt for WindowId {
+impl WindowIdExt for WindowIdentifier {
     fn bounds_on_screen_including_frame(&self) -> Option<Rect> {
         window_outer_screen_bounds(self)
     }
@@ -109,7 +109,7 @@ impl WindowIdExt for WindowId {
 }
 
 /// Called by `ApplicationHandle` at the end of the event loop callback.
-pub(crate) fn process_window_updates(id: &WindowId) -> bool {
+pub(crate) fn process_window_updates(id: &WindowIdentifier) -> bool {
     let mut result = false;
     if let Some(items) = retreive_window_updates(id) {
         result = !items.is_empty();

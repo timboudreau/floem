@@ -29,10 +29,11 @@ use floem::{
     style::{Background, CursorStyle, Transition},
     theme::StyleThemeExt,
     ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey},
-    window::{Theme, WindowConfig, WindowId},
+    window::{Theme, WindowConfig},
+    WindowIdentifier,
 };
 
-fn app_view(window_id: WindowId) -> impl IntoView {
+fn app_view(window_id: WindowIdentifier) -> impl IntoView {
     let tabs: Vec<&'static str> = vec![
         "Label",
         "Button",
