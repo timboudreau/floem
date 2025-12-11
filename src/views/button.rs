@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-use crate::{IntoView, View, ViewId, style_class, views::Decorators};
+use crate::{IntoView, View, ViewId, ViewIdentifier, style_class, views::Decorators};
 
 style_class!(
     /// The style class that is applied to buttons.

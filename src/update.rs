@@ -4,7 +4,7 @@ use peniko::kurbo::{Point, Rect, Size, Vec2};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::window::{ResizeDirection, Theme};
 
-use crate::{id::ViewId, menu::Menu, view::View};
+use crate::{ViewId, ViewIdentifier, menu::Menu, view::View};
 
 thread_local! {
     /// Stores all the update message with their original `ViewId`

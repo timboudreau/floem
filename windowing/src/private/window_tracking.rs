@@ -3,21 +3,15 @@
 //! that views can retrieve the `WindowId` of the window that contains them
 //! and use the methods that look up the `Window` for that id to retrieve information
 //! such as screen position.
-use crate::{ViewId, WindowIdentifier};
-use peniko::kurbo::{Point, Rect};
+use crate::{
+    NativeWindow, ViewId, WindowIdentifier, WindowingSystem, internal_api::WindowingBackend,
+};
 use std::{
     collections::HashMap,
-    sync::{Arc, OnceLock, RwLock},
-};
-use winit::{
-    dpi::{PhysicalPosition, PhysicalSize},
-    monitor::MonitorHandle,
-    window::Window,
+    sync::{OnceLock, RwLock},
 };
 
 static WINDOW_FOR_WINDOW_AND_ROOT_IDS: OnceLock<RwLock<WindowMapping>> = OnceLock::new();
-
-pub type NativeWindow = Arc<dyn Window>;
 
 /// Add a mapping from `root_id` -> `window_id` -> `window` for the given triple.
 pub fn store_window_id_mapping(
@@ -36,19 +30,24 @@ pub fn remove_window_id_mapping(root_id: &ViewId, window_id: &WindowIdentifier) 
 /// Maps root-id:window-id:window triples, so a view can get its root and
 /// from that locate the window-id (if any) that it belongs to.
 #[derive(Default)]
-struct WindowMapping {
-    window_for_window_id: HashMap<WindowIdentifier, NativeWindow>,
-    window_id_for_root_view_id: HashMap<ViewId, WindowIdentifier>,
+pub(crate) struct WindowMapping {
+    pub(crate) window_for_window_id: HashMap<WindowIdentifier, NativeWindow>,
+    pub(crate) window_id_for_root_view_id: HashMap<ViewId, WindowIdentifier>,
 }
 
 impl WindowMapping {
-    fn add(&mut self, root: ViewId, window_id: impl Into<WindowIdentifier>, window: NativeWindow) {
+    pub fn add(
+        &mut self,
+        root: ViewId,
+        window_id: impl Into<WindowIdentifier>,
+        window: NativeWindow,
+    ) {
         let id = window_id.into();
         self.window_for_window_id.insert(id, window);
         self.window_id_for_root_view_id.insert(root, id);
     }
 
-    fn remove(&mut self, root: &ViewId, window_id: &WindowIdentifier) {
+    pub fn remove(&mut self, root: &ViewId, window_id: &WindowIdentifier) {
         let root_found = self.window_id_for_root_view_id.remove(root).is_some();
         let window_found = self.window_for_window_id.remove(window_id).is_some();
         debug_assert!(
@@ -57,7 +56,7 @@ impl WindowMapping {
         );
     }
 
-    fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> T, T>(
+    pub fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> T, T>(
         &self,
         root_view_id: ViewId,
         f: F,
@@ -71,7 +70,7 @@ impl WindowMapping {
             })
     }
 
-    fn with_window<F: FnOnce(&NativeWindow) -> T, T>(
+    pub fn with_window<F: FnOnce(&NativeWindow) -> T, T>(
         &self,
         window: &WindowIdentifier,
         f: F,
@@ -79,11 +78,11 @@ impl WindowMapping {
         self.window_for_window_id.get(window).map(f)
     }
 
-    fn window_id_for_root(&self, id: &ViewId) -> Option<WindowIdentifier> {
+    pub fn window_id_for_root(&self, id: &ViewId) -> Option<WindowIdentifier> {
         self.window_id_for_root_view_id.get(id).copied()
     }
 
-    fn root_view_id_for(&self, window_id: &WindowIdentifier) -> Option<ViewId> {
+    pub fn root_view_id_for(&self, window_id: &WindowIdentifier) -> Option<ViewId> {
         for (k, v) in self.window_id_for_root_view_id.iter() {
             if v == window_id {
                 return Some(*k);
@@ -97,7 +96,8 @@ pub fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> 
     view: &ViewId,
     f: F,
 ) -> Option<T> {
-    view.root()
+    // view.root()
+    WindowingSystem::root_of(view)
         .and_then(|root_view_id| with_window_map(|m| m.with_window_id_and_window(root_view_id, f)))
         .unwrap_or(None)
 }
@@ -116,7 +116,7 @@ fn with_window_map_mut<F: FnMut(&mut WindowMapping)>(mut f: F) -> bool {
     }
 }
 
-fn with_window_map<F: FnOnce(&WindowMapping) -> T, T>(f: F) -> Option<T> {
+pub fn with_window_map<F: FnOnce(&WindowMapping) -> T, T>(f: F) -> Option<T> {
     let map = WINDOW_FOR_WINDOW_AND_ROOT_IDS.get_or_init(|| RwLock::new(Default::default()));
     if let Ok(map) = map.read() {
         Some(f(&map))
@@ -146,117 +146,4 @@ pub fn force_window_repaint(id: &WindowIdentifier) -> bool {
 
 pub fn window_id_for_root(root_id: ViewId) -> Option<WindowIdentifier> {
     with_window_map(|map| map.window_id_for_root(&root_id)).unwrap_or(None)
-}
-
-pub fn monitor_bounds(id: &WindowIdentifier) -> Option<Rect> {
-    with_window_map(|m| {
-        m.with_window(id, |window| {
-            window
-                .current_monitor()
-                .map(|monitor| monitor_bounds_for_monitor(window, &monitor))
-        })
-        .unwrap_or(None)
-    })
-    .unwrap_or(None)
-}
-
-pub fn monitor_bounds_for_monitor(window: &NativeWindow, monitor: &MonitorHandle) -> Rect {
-    let scale = 1.0 / window.scale_factor();
-    let pos = monitor.position().unwrap_or_default();
-    let sz = monitor
-        .current_video_mode()
-        .map(|h| h.size())
-        .unwrap_or_default();
-    let x = pos.x as f64 * scale;
-    let y = pos.y as f64 * scale;
-    Rect::new(
-        x,
-        y,
-        x + sz.width as f64 * scale,
-        y + sz.height as f64 * scale,
-    )
-}
-
-fn scale_rect(window: &NativeWindow, mut rect: Rect) -> Rect {
-    let scale = 1.0 / window.scale_factor();
-    rect.x0 *= scale;
-    rect.y0 *= scale;
-    rect.x1 *= scale;
-    rect.y1 *= scale;
-    rect
-}
-
-fn scale_point(window: &NativeWindow, mut rect: Point) -> Point {
-    let scale = 1.0 / window.scale_factor();
-    rect.x *= scale;
-    rect.y *= scale;
-    rect
-}
-
-pub fn window_inner_screen_position(id: &WindowIdentifier) -> Option<Point> {
-    with_window_map(|m| {
-        m.with_window(id, |window| {
-            let pos = window.surface_position();
-            scale_point(window, Point::new(pos.x as f64, pos.y as f64))
-        })
-    })
-    .unwrap_or(None)
-}
-
-pub fn window_inner_screen_bounds(id: &WindowIdentifier) -> Option<Rect> {
-    with_window_map(|m| {
-        m.with_window(id, |window| {
-            let pos = window.surface_position();
-            rect_from_physical_bounds_for_window(window, pos, window.surface_size())
-        })
-    })
-    .unwrap_or(None)
-}
-
-pub fn rect_from_physical_bounds_for_window(
-    window: &NativeWindow,
-    pos: PhysicalPosition<i32>,
-    sz: PhysicalSize<u32>,
-) -> Rect {
-    scale_rect(
-        window,
-        Rect::new(
-            pos.x as f64,
-            pos.y as f64,
-            pos.x as f64 + sz.width as f64,
-            pos.y as f64 + sz.height as f64,
-        ),
-    )
-}
-
-pub fn window_outer_screen_position(id: &WindowIdentifier) -> Option<Point> {
-    with_window_map(|m| {
-        m.with_window(id, |window| {
-            window
-                .outer_position()
-                .map(|pos| Some(scale_point(window, Point::new(pos.x as f64, pos.y as f64))))
-                .unwrap_or(None)
-        })
-        .unwrap_or(None)
-    })
-    .unwrap_or(None)
-}
-
-pub fn window_outer_screen_bounds(id: &WindowIdentifier) -> Option<Rect> {
-    with_window_map(|m| {
-        m.with_window(id, |window| {
-            window
-                .outer_position()
-                .map(|pos| {
-                    Some(rect_from_physical_bounds_for_window(
-                        window,
-                        pos,
-                        window.outer_size(),
-                    ))
-                })
-                .unwrap_or(None)
-        })
-        .unwrap_or(None)
-    })
-    .unwrap_or(None)
 }

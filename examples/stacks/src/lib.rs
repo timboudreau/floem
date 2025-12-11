@@ -1,7 +1,7 @@
 use floem::{
     ui_events::keyboard::{Key, NamedKey},
     views::Decorators,
-    IntoView, View,
+    IntoView, View, ViewIdentifier,
 };
 
 mod dyn_stack;

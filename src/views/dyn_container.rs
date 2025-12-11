@@ -3,10 +3,7 @@ use std::any::Any;
 use floem_reactive::{Scope, UpdaterEffect};
 
 use crate::{
-    IntoView, ViewId,
-    animate::RepeatMode,
-    context::UpdateCx,
-    view::{AnyView, View},
+    animate::RepeatMode, context::UpdateCx, id::ViewIdentifierInternal, view::{AnyView, View}, IntoView, ViewId, ViewIdentifier
 };
 
 #[macro_export]

@@ -1,5 +1,6 @@
 use baseview::WindowHandle;
-
+use slotmap::*;
+use std::{borrow::BorrowMut, cell::RefCell, sync::Arc, sync::LazyLock};
 /*
 Hmm, baseview::Window has a lifetime.
 
@@ -17,12 +18,23 @@ control in the first place.
 
 */
 
-type WindowIdInner = u16;
-
 /// A transparent wrapper over the library handling window management's window
 /// identity abstraction.
-#[repr(transparent)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct WindowIdentifier {
-    id: WindowIdInner,
+new_key_type! {
+    /// A small unique identifier for an instance of a `View`.
+    ///
+    /// This id is how you can access and modify a view, including accessing children views and updating state.
+   pub struct WindowIdentifier;
+}
+
+impl crate::common::WindowIdDelegate for WindowIdentifier {}
+
+thread_local! {
+    static WINDOW_STORAGE : RefCell<SlotMap<WindowIdentifier, Arc<baseview::Window<'static>>>> = RefCell::new(SlotMap::with_key());
+}
+
+impl From<Arc<baseview::Window<'static>>> for WindowIdentifier {
+    fn from(value: Arc<baseview::Window<'static>>) -> Self {
+        WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(value))
+    }
 }

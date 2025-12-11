@@ -3,8 +3,7 @@
 use peniko::kurbo::Size;
 
 use crate::{
-    id::ViewId,
-    view::{IntoView, View},
+    id::ViewIdentifierInternal as _, view::{IntoView, View}, ViewId, ViewIdentifier
 };
 
 /// A wrapper around a child View to clip painting. See [`clip`].

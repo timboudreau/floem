@@ -9,7 +9,7 @@ use floem::{
     prelude::*,
     reactive::UpdaterEffect,
     ui_events::pointer::{PointerButtonEvent, PointerEvent},
-    ViewId,
+    ViewId, ViewIdentifier,
 };
 use palette::css;
 

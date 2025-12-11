@@ -13,9 +13,11 @@ use crate::{
     action::{set_window_menu, set_window_scale, set_window_title},
     animate::Animation,
     event::{Event, EventListener, EventPropagation},
+    id::ViewIdentifierInternal,
     menu::Menu,
     style::{Style, StyleClass},
     view::{IntoView, View},
+    ViewIdentifier,
 };
 
 /// A trait that extends the appearance and functionality of Views through styling and event handling.
@@ -35,7 +37,7 @@ pub trait Decorators: IntoView<V = Self::DV> + Sized {
     /// - **Spacing**: Padding, margins with individual side control or shorthand methods
     /// - **Positioning**: Absolute positioning with inset controls
     ///
-    /// ## Visual Styling  
+    /// ## Visual Styling
     /// - **Colors & Brushes**: Solid colors, gradients, and custom brushes for backgrounds and text
     /// - **Borders**: Individual border styling per side with colors, widths, and radius
     /// - **Shadows**: Box shadows with blur, spread, offset, and color customization

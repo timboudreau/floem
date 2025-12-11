@@ -14,7 +14,7 @@ use floem::{
         },
         stack, text_editor, Decorators,
     },
-    IntoView, View,
+    IntoView, View, ViewIdentifier,
 };
 
 pub fn editor_view() -> impl IntoView {

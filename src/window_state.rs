@@ -9,7 +9,8 @@ use winit::window::Theme;
 use crate::{
     context::{DragState, FrameUpdate},
     event::{Event, EventListener},
-    id::ViewId,
+    ViewId, ViewIdentifier,
+    id::ViewIdentifierInternal,
     inspector::CaptureState,
     responsive::{GridBreakpoints, ScreenSizeBp},
     style::{CursorStyle, StyleSelector},

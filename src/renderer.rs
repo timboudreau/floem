@@ -48,7 +48,7 @@
 //! - Only one view can be focused at a time.
 //!
 use crate::kurbo::Point;
-use crate::window_tracking::NativeWindow;
+use crate::NativeWindow;
 use floem_renderer::Img;
 use floem_renderer::gpu_resources::GpuResources;
 use floem_renderer::text::LayoutRun;

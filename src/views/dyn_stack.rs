@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 
 use crate::{
     context::UpdateCx,
-    id::ViewId,
+    ViewId, ViewIdentifier,
     view::{IntoView, View},
     window_state::WindowState,
 };

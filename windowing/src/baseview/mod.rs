@@ -1,8 +1,10 @@
+mod backend;
 mod window_identifier;
 
-use std::sync::Arc;
 use baseview::Window;
+use std::sync::Arc;
 
+pub use backend::*;
 pub use window_identifier::*;
 
 /*

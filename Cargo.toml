@@ -68,9 +68,10 @@ ui-events-winit = { path = "./ui-events-winit", package = "ui-events-floem-winit
 ui-events-baseview = { path = "./ui-events-baseview" }
 dpi = { version = "0.1.2", default-features = false }
 windowing = { path = "./windowing" }
+slotmap = "1.0"
 
 [dependencies]
-slotmap = "1.0"
+slotmap = { workspace = true }
 sha2 = "0.10"
 bitflags = "2.9"
 indexmap = "2"

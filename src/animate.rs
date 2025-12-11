@@ -5,6 +5,7 @@
 use crate::{
     ViewId,
     easing::*,
+    id::ViewIdentifierInternal,
     style::{Style, StylePropRef},
     unit::UnitExt,
     view_state::StackOffset,

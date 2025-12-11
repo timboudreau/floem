@@ -16,7 +16,7 @@ use taffy::tree::NodeId;
 use crate::{
     IntoView,
     context::UpdateCx,
-    id::ViewId,
+    ViewId, ViewIdentifier, id::ViewIdentifierInternal,
     style::{Style, TextOverflow},
     unit::PxPct,
     view::View,

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::{IntoView, id::ViewId, view::AnyView, view_state::ViewState};
+use crate::{IntoView, ViewId, view::AnyView, view_state::ViewState};
 
 thread_local! {
     pub(crate) static VIEW_STORAGE: RefCell<ViewStorage> = Default::default();
@@ -54,7 +54,7 @@ impl ViewStorage {
 
     /// Returns the deepest view ID encountered traversing parents.  It does *not* guarantee
     /// that it is a real window root; any caller should perform the same test
-    /// of `window_tracking::is_known_root()` that `ViewId.root()` does before
+    /// of `WindowingSystem::is_known_root()` that `ViewId.root()` does before
     /// assuming the returned value is really a window root.
     pub(crate) fn root_view_id(&self, id: ViewId) -> Option<ViewId> {
         if let Some(p) = self.parent.get(id).unwrap_or(&None) {

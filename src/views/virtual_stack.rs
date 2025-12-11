@@ -16,7 +16,7 @@ use taffy::{FlexDirection, style::Dimension, tree::NodeId};
 
 use crate::{
     context::ComputeLayoutCx,
-    id::ViewId,
+    ViewId, ViewIdentifier, id::ViewIdentifierInternal,
     prop_extractor,
     style::{FlexDirectionProp, Style},
     view::{self, IntoView, View},

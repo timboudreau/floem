@@ -1,5 +1,6 @@
 use dpi::PhysicalPosition;
 use floem_renderer::gpu_resources::GpuResources;
+use windowing::{internal_api::WindowingBackend, WindowingSystem};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
@@ -38,7 +39,6 @@ use crate::{
     view::View,
     window::WindowConfig,
     window_handle::WindowHandle,
-    window_id::process_window_updates,
 };
 
 pub(crate) struct ApplicationHandle {
@@ -587,7 +587,7 @@ impl ApplicationHandle {
     pub(crate) fn handle_updates_for_all_windows(&mut self) {
         for (window_id, handle) in self.window_handles.iter_mut() {
             handle.process_update();
-            while process_window_updates(window_id) {}
+            while WindowingSystem::process_window_updates(window_id) {}
         }
     }
 

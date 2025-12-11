@@ -19,7 +19,7 @@ use crate::views::{
     TooltipExt, resizable,
 };
 use crate::window::WindowConfig;
-use crate::{IntoView, View, ViewId, new_window};
+use crate::{IntoView, View, ViewId, ViewIdentifier, new_window};
 use floem_reactive::{Effect, RwSignal, SignalGet, SignalUpdate};
 use peniko::Color;
 use peniko::color::palette;

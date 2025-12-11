@@ -218,6 +218,7 @@ impl Application {
         Self::new_with_config(AppConfig::default())
     }
     pub fn new_with_config(config: AppConfig) -> Self {
+        crate::screen_layout::ensure_windowing_system_initialized();
         let event_loop = EventLoop::new().expect("can't start the event loop");
 
         #[cfg(target_os = "macos")]

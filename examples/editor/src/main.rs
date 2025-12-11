@@ -13,7 +13,7 @@ use floem::{
         },
         stack, text_editor, Decorators,
     },
-    IntoView, View,
+    IntoView, View, ViewIdentifier,
 };
 
 fn app_view() -> impl IntoView {

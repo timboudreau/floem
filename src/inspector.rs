@@ -3,7 +3,8 @@ mod view;
 
 use crate::context::StyleCx;
 use crate::event::{Event, EventListener, EventPropagation};
-use crate::id::ViewId;
+use crate::id::ViewIdentifierInternal as _;
+use crate::{ViewId, ViewIdentifier as _};
 use crate::prelude::ViewTuple;
 use crate::style::{
     Focusable, FontSize, OverflowX, OverflowY, Style, StyleClassRef, StyleKeyInfo, StylePropRef,

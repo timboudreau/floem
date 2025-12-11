@@ -49,15 +49,7 @@ use std::any::Any;
 use taffy::tree::NodeId;
 
 use crate::{
-    Renderer,
-    context::{ComputeLayoutCx, EventCx, LayoutCx, PaintCx, StyleCx, UpdateCx},
-    event::{Event, EventPropagation},
-    id::ViewId,
-    style::{LayoutProps, Style, StyleClassRef},
-    unit::PxPct,
-    view_state::ViewStyleProps,
-    views::{DynamicView, dyn_view},
-    window_state::WindowState,
+    context::{ComputeLayoutCx, EventCx, LayoutCx, PaintCx, StyleCx, UpdateCx}, event::{Event, EventPropagation}, id::ViewIdentifierInternal as _, style::{LayoutProps, Style, StyleClassRef}, unit::PxPct, view_state::ViewStyleProps, views::{dyn_view, DynamicView}, window_state::WindowState, Renderer, ViewId, ViewIdentifier as _
 };
 
 /// type erased [`View`]

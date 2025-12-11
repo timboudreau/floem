@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::style::{CustomStylable, CustomStyle, Style, StylePropValue};
 use crate::view_state::{Stack, StackOffset};
 use crate::views::{Decorators, static_label};
-use crate::{AnyView, IntoView, View, ViewId, prop, prop_extractor, style_class};
+use crate::{AnyView, IntoView, View, ViewId, ViewIdentifier, prop, prop_extractor, style_class};
 use floem_reactive::UpdaterEffect;
 use floem_renderer::text::Align;
 use fluent_bundle::{FluentBundle, FluentResource};

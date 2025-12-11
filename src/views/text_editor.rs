@@ -7,7 +7,7 @@ use peniko::Color;
 use lapce_xi_rope::Rope;
 
 use crate::{
-    id::ViewId,
+    ViewId, ViewIdentifier, id::ViewIdentifierInternal,
     style::{CursorColor, Style},
     view::{IntoView, View},
     views::editor::{

@@ -14,7 +14,7 @@ use crate::{
     Renderer,
     context::{ComputeLayoutCx, PaintCx},
     event::{Event, EventPropagation},
-    id::ViewId,
+    ViewId, ViewIdentifier, id::ViewIdentifierInternal,
     prop, prop_extractor,
     style::{Background, Style, StyleSelector},
     style_class,

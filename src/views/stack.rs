@@ -2,7 +2,7 @@ use taffy::style::FlexDirection;
 
 use crate::{
     context::UpdateCx,
-    id::ViewId,
+    ViewId, ViewIdentifier,
     style::{Style, StyleClassRef},
     view::{IntoView, View},
     view_tuple::ViewTuple,

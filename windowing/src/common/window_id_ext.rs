@@ -1,8 +1,9 @@
+use crate::ScreenLayout;
+#[cfg(target_os = "macos")]
+use crate::internal_api::WindowUpdate;
 use peniko::kurbo::{Point, Rect, Size};
 #[cfg(feature = "winit")]
 use winit::window::UserAttentionType;
-
-use crate::ScreenLayout;
 
 /// Delegate enum for `winit`'s [`UserAttentionType`](https://docs.rs/winit/latest/winit/window/enum.UserAttentionType.html)
 ///
@@ -29,26 +30,6 @@ impl From<Urgency> for Option<UserAttentionType> {
             Urgency::Default => None,
         }
     }
-}
-
-/// Enum of state updates that can be requested on a window which are processed
-/// asynchronously after event processing.
-#[allow(dead_code)] // DocumentEdited is seen as unused on non-mac builds
-pub(crate) enum WindowUpdate {
-    Visibility(bool),
-    InnerBounds(Rect),
-    OuterBounds(Rect),
-    // Since both inner bounds and outer bounds require some fudgery because winit
-    // only supports setting outer location and *inner* bounds, it is a good idea
-    // also to support setting the two things winit supports directly:
-    OuterLocation(Point),
-    InnerSize(Size),
-    RequestAttention(Option<UserAttentionType>),
-    Minimize(bool),
-    Maximize(bool),
-    // macOS only
-    #[allow(unused_variables)] // seen as unused on linux, etc.
-    DocumentEdited(bool),
 }
 
 /// Ensures `WindowIdExt` cannot be implemented on arbitrary types.
@@ -155,6 +136,7 @@ pub trait WindowIdExt: WindowIdExtSealed {
         self.add_window_update(WindowUpdate::InnerSize(size))
     }
 
+    #[cfg(feature = "winit")]
     /// Cause the desktop to perform some attention-drawing behavior that draws
     /// the user's attention specifically to this window - e.g. bouncing in
     /// the dock on macOS.  On X11, after calling this method with some urgency

@@ -210,7 +210,6 @@ pub mod view_tuple;
 pub mod views;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
-mod window_id_ext;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub mod window_baseview;
@@ -218,7 +217,6 @@ pub mod window_baseview;
 mod window_handle;
 mod window_id;
 pub(crate) mod window_state;
-mod window_tracking;
 pub mod receiver_signal {
     //! Signals from Channels, Futures, and Streams.
     mod channel_signal;
@@ -241,7 +239,7 @@ pub use floem_renderer::Renderer;
 pub use floem_renderer::Svg as RendererSvg;
 pub use floem_renderer::gpu_resources::GpuResources;
 pub use floem_renderer::text;
-pub use id::{RootViewProvider, ViewId};
+pub use id::{RootViewProvider, ViewIdentifier};
 pub use imbl;
 pub use muda;
 pub use peniko;
@@ -257,7 +255,6 @@ pub use windowing::*;
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub use window_baseview::{WindowConfig, close_window, new_window};
 
-pub use window_id_ext::{Urgency, WindowIdExt};
 pub use window_state::WindowState;
 
 pub mod prelude {

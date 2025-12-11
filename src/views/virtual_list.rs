@@ -3,7 +3,7 @@ use taffy::FlexDirection;
 use ui_events::keyboard::{Key, NamedKey};
 
 use crate::event::{Event, EventListener, EventPropagation};
-use crate::{ViewId, prelude::*};
+use crate::{ViewId, ViewIdentifier, prelude::*};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::{Deref, DerefMut};

@@ -169,6 +169,7 @@ use taffy::{
     },
 };
 
+use crate::id::ViewIdentifierInternal;
 use crate::context::InteractionState;
 use crate::prelude::ViewTuple;
 use crate::responsive::{ScreenSize, ScreenSizeBp};

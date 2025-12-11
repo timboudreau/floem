@@ -23,15 +23,16 @@ use taffy::prelude::NodeId;
 
 use crate::animate::{AnimStateKind, RepeatMode};
 use crate::easing::{Easing, Linear};
+use crate::id::ViewIdentifierInternal as _;
 use crate::menu::Menu;
 use crate::renderer::Renderer;
 use crate::style::{Disabled, DisplayProp, Focusable, Hidden, PointerEvents, PointerEventsProp};
 use crate::view_state::IsHiddenState;
-use crate::window_tracking::NativeWindow;
+use crate::{NativeWindow, ViewIdentifier as _};
 use crate::{
     action::{exec_after, show_context_menu},
     event::{Event, EventListener, EventPropagation},
-    id::ViewId,
+    ViewId,
     inspector::CaptureState,
     style::{Style, StyleProp, ZIndex},
     view::{View, paint_bg, paint_border, paint_outline},

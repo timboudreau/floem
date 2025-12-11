@@ -1,4 +1,4 @@
-use floem::{prelude::*, unit::UnitExt};
+use floem::{prelude::*, unit::UnitExt, ViewIdentifier};
 
 fn app_view() -> impl IntoView {
     let counter = RwSignal::new(0);

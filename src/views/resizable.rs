@@ -1,5 +1,5 @@
 use crate::{
-    ViewId,
+    ViewId, ViewIdentifier, id::ViewIdentifierInternal,
     context::{ComputeLayoutCx, EventCx, PaintCx, UpdateCx},
     event::{Event, EventPropagation},
     prelude::*,

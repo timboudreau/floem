@@ -8,6 +8,7 @@ repository.workspace = true
 
 [features]
 # default = ["winit"] # deleteme!
+# default = ["baseview"] # deleteme!
 
 winit = ["dep:winit"]
 baseview = ["dep:baseview"]
@@ -16,3 +17,4 @@ baseview = ["dep:baseview"]
 winit = { workspace = true, optional = true }
 baseview = { workspace = true, optional = true}
 peniko = { workspace = true }
+slotmap = { workspace = true }

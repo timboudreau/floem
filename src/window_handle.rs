@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::{cell::RefCell, mem, rc::Rc, sync::Arc};
 
 use muda::MenuId;
+use windowing::internal_api::WindowingBackend as _;
+use windowing::WindowingSystem;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 use ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey};
@@ -26,7 +28,8 @@ use winit::{
     event::Ime,
 };
 
-use crate::WindowIdentifier;
+use crate::id::ViewIdentifierInternal;
+use crate::{ViewIdentifier, WindowIdentifier};
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::menu::MudaMenu;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -35,7 +38,7 @@ use crate::reactive::SignalWith;
 use crate::unit::UnitExt;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::views::{Decorators, container, stack};
-use crate::window_tracking::NativeWindow;
+use crate::NativeWindow;
 use crate::{
     Application,
     app::UserEvent,
@@ -43,7 +46,7 @@ use crate::{
         ComputeLayoutCx, EventCx, FrameUpdate, LayoutCx, PaintCx, PaintState, StyleCx, UpdateCx,
     },
     event::{Event, EventListener},
-    id::ViewId,
+    ViewId,
     inspector::{self, Capture, CaptureState, CapturedView},
     nav::view_arrow_navigation,
     profiler::Profile,
@@ -56,7 +59,6 @@ use crate::{
     view::{IntoView, View, view_tab_navigation},
     view_state::ChangeFlags,
     window_state::WindowState,
-    window_tracking::{remove_window_id_mapping, store_window_id_mapping},
 };
 use event::FileDragEvent;
 
@@ -146,7 +148,7 @@ impl WindowHandle {
         id.set_view(view.into_any());
 
         let window: NativeWindow = window.into();
-        store_window_id_mapping(id, window_id.into(), &window);
+        WindowingSystem::store_window_id_mapping(id, window_id.into(), &window);
 
         let paint_state = if let Some(resources) = gpu_resources.clone() {
             let surface = resources
@@ -1164,7 +1166,7 @@ impl WindowHandle {
     pub(crate) fn destroy(&mut self) {
         self.event(Event::WindowClosed);
         self.scope.dispose();
-        remove_window_id_mapping(&self.id, &self.window_id);
+        WindowingSystem::remove_window_id_mapping(&self.id, &self.window_id);
     }
 
     #[cfg(target_os = "macos")]

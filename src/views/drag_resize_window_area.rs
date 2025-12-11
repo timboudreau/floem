@@ -3,7 +3,8 @@ use winit::window::ResizeDirection;
 use crate::{
     action::drag_resize_window,
     event::EventListener,
-    id::ViewId,
+    ViewId,
+    ViewIdentifier,
     style::CursorStyle,
     view::{IntoView, View},
 };

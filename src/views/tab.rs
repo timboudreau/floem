@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{
     context::{StyleCx, UpdateCx},
-    id::ViewId,
+    ViewId, ViewIdentifier,
     style_class,
     view::{IntoView, View},
 };

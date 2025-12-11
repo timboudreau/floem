@@ -4,7 +4,9 @@ use crate::{
     Clipboard,
     context::{PaintCx, UpdateCx},
     event::{Event, EventListener, EventPropagation},
-    id::ViewId,
+    ViewId,
+    ViewIdentifier,
+    id::ViewIdentifierInternal,
     prop_extractor,
     style::{
         CursorColor, CustomStylable, CustomStyle, FontProps, LineHeight, Selectable,

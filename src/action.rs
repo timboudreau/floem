@@ -20,13 +20,12 @@ use web_time::{Duration, Instant};
 
 use crate::{
     app::{AppUpdateEvent, add_app_update_event},
-    id::ViewId,
+    ViewId,
     menu::Menu,
     update::{UPDATE_MESSAGES, UpdateMessage},
     view::View,
     views::Decorators,
-    window_handle::{get_current_view, set_current_view},
-    window_tracking::with_window,
+    window_handle::{get_current_view, set_current_view}
 };
 
 #[cfg(any(feature = "rfd-async-std", feature = "rfd-tokio"))]
@@ -131,8 +130,11 @@ pub fn toggle_window_theme() {
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Get current window theme.
 pub fn current_theme() -> Option<Theme> {
+    use windowing::{internal_api::WindowingBackend as _, WindowingSystem};
+
+    use crate::ViewIdentifier as _;
     let win_id = get_current_view().window_id()?;
-    with_window(&win_id, |w| w.theme())?
+    WindowingSystem::with_window(&win_id, |w| w.theme())?
 }
 
 pub(crate) struct Timer {
