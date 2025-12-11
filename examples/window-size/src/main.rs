@@ -3,7 +3,7 @@ use floem::{
     kurbo::Size,
     prelude::*,
     window::WindowConfig,
-    Application,
+    Application, ViewIdentifier,
 };
 
 fn app_view() -> impl IntoView {

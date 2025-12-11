@@ -3,6 +3,7 @@ use floem::{
     imbl,
     prelude::*,
     style::Position,
+    ViewIdentifier,
 };
 
 const SIDEBAR_WIDTH: f64 = 140.0;

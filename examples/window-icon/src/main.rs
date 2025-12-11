@@ -1,11 +1,5 @@
 use floem::{
-    close_window,
-    event::{Event, EventListener},
-    kurbo::Size,
-    new_window,
-    prelude::*,
-    window::{Icon, RgbaIcon, WindowConfig},
-    Application, IntoView, View, WindowIdentifier,
+    close_window, event::{Event, EventListener}, kurbo::Size, new_window, prelude::*, window::{Icon, RgbaIcon, WindowConfig}, Application, IntoView, View, ViewIdentifier, WindowIdentifier
 };
 use std::path::Path;
 

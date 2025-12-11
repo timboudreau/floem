@@ -2,6 +2,7 @@ use floem::{
     event::EventListener,
     prelude::*,
     style::{CustomStylable, CustomStyle},
+    ViewIdentifier,
 };
 
 pub fn draggable_sidebar_view() -> impl IntoView {

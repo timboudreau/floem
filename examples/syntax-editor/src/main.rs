@@ -10,7 +10,7 @@ use floem::{
         layout::TextLayoutLine,
         text::{default_dark_color, Document, SimpleStylingBuilder, Styling, WrapMethod},
         EditorStyle,
-    },
+    }, ViewIdentifier,
 };
 use std::borrow::Cow;
 use std::cell::RefCell;

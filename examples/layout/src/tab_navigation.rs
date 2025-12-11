@@ -4,6 +4,7 @@ use floem::{
     prelude::*,
     style::{CursorStyle, Position},
     text::Weight,
+    ViewIdentifier,
 };
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]

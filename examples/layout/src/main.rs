@@ -3,7 +3,7 @@ use floem::{
     kurbo::Size,
     prelude::*,
     style::AlignContent,
-    window::{new_window, WindowConfig},
+    window::{new_window, WindowConfig}, ViewIdentifier,
 };
 
 pub mod draggable_sidebar;

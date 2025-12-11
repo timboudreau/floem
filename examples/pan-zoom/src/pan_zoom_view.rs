@@ -1,11 +1,7 @@
 use std::{collections::VecDeque, time::Duration};
 
 use floem::{
-    IntoView, View,
-    action::exec_after,
-    event::{Event, EventPropagation},
-    kurbo::{self, Vec2},
-    ui_events::pointer::{PointerButtonEvent, PointerEvent, PointerUpdate},
+    action::exec_after, event::{Event, EventPropagation}, kurbo::{self, Vec2}, ui_events::pointer::{PointerButtonEvent, PointerEvent, PointerUpdate}, IntoView, View, ViewIdentifier
 };
 
 const VELOCITY_HISTORY_SIZE: usize = 8;

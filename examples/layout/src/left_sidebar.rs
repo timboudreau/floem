@@ -1,4 +1,4 @@
-use floem::{event::EventListener, imbl, prelude::*, style::Position};
+use floem::{event::EventListener, imbl, prelude::*, style::Position, ViewIdentifier};
 
 const SIDEBAR_WIDTH: f64 = 140.0;
 const TOPBAR_HEIGHT: f64 = 30.0;
