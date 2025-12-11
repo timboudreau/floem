@@ -1,5 +1,7 @@
-use windowing::{internal_api::WindowingBackend, ViewId, WindowIdentifier, WindowingSystem};
+use windowing::internal_api::{WindowingBackend,WindowingSystem};
 use crate::{
+    ViewId,
+    WindowIdentifier,
     id::RootViewProvider,
 };
 

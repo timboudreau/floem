@@ -4,7 +4,8 @@
 //! and use the methods that look up the `Window` for that id to retrieve information
 //! such as screen position.
 use crate::{
-    NativeWindow, ViewId, WindowIdentifier, WindowingSystem, internal_api::WindowingBackend,
+    public_api::{NativeWindow, ViewId, WindowIdentifier},
+    internal_api::{WindowingBackend, WindowingSystem},
 };
 use std::{
     collections::HashMap,

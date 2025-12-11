@@ -250,7 +250,7 @@ pub use view::{AnyView, IntoView, View, default_compute_layout, recursively_layo
 pub use view_state::{Stack, StackOffset};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub use window::{close_window, new_window};
-pub use windowing::*;
+pub use windowing::public_api::*;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub use window_baseview::{WindowConfig, close_window, new_window};

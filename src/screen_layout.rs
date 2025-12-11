@@ -3,7 +3,7 @@
 
 use crate::{ViewId, ViewIdentifier};
 use peniko::kurbo::Point;
-use windowing::{internal_api::WindowingBackend, WindowingSystem};
+use windowing::internal_api::{WindowingBackend, WindowingSystem};
 
 pub(crate) fn ensure_windowing_system_initialized() {
     // Sanity check that the window system type, which varies by backend, is zero-sized -

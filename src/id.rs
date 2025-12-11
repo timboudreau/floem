@@ -9,7 +9,7 @@ use std::{any::Any, cell::RefCell, rc::Rc};
 use crate::WindowIdentifier;
 use peniko::kurbo::{Insets, Point, Rect, Size};
 use taffy::{Display, Layout, NodeId, TaffyTree};
-use windowing::{internal_api::WindowingBackend, WindowingSystem};
+use windowing::internal_api::{WindowingBackend, WindowingSystem};
 
 use crate::{
     ScreenLayout,

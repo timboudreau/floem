@@ -1,4 +1,4 @@
-use crate::{NativeWindow, WindowIdentifier, private::window_tracking::with_window_map};
+use crate::{public_api::{NativeWindow, WindowIdentifier}, private::window_tracking::with_window_map};
 use peniko::kurbo::{Point, Rect, Size};
 use winit::{
     dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Pixel},

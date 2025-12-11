@@ -1,5 +1,5 @@
 use super::WindowUpdate;
-use crate::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier};
+use crate::public_api::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier};
 use peniko::kurbo::Point;
 use std::sync::OnceLock;
 
@@ -21,6 +21,11 @@ pub trait WindowingBackend: Sized {
     fn init(root_finder: RootFinder, origin_finder: OriginFinder) {
         let _ = ROOT_FINDER.set((root_finder, origin_finder));
     }
+
+    // Pending: retrieve_window_updates and possibly push_window_update can be removed from any
+    // public API at all - process window updates is now implemented here, and it can do its own
+    // retrieval without exposing anything more.  Need to double check that no code in the main
+    // crate calls push_window_update.
 
     /// Retrieve any pending window updates for processing.
     fn retreive_window_updates(id: &WindowIdentifier) -> Option<Vec<WindowUpdate>>;

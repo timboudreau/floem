@@ -16,20 +16,13 @@ mod winit;
 #[cfg(any(feature = "winit", feature = "baseview"))]
 pub mod internal_api;
 
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-pub use crate::baseview::*;
+pub mod public_api {
+    #[cfg(any(feature = "winit", feature = "baseview"))]
+    pub use super::common::*;
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-pub use crate::winit::*;
+    #[cfg(all(feature = "baseview", not(feature = "winit")))]
+    pub use super::baseview::*;
 
-#[cfg(any(feature = "winit", feature = "baseview"))]
-pub use common::*;
-
-// #[cfg(any(feature = "winit", feature = "baseview"))]
-// pub use internal_api::*;
-
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-pub type WindowingSystem = WInit;
-
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-pub type WindowingSystem = Baseview;
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
+    pub use super::winit::*;
+}

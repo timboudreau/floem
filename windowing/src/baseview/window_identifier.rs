@@ -1,4 +1,3 @@
-use baseview::WindowHandle;
 use slotmap::*;
 use std::{borrow::BorrowMut, cell::RefCell, sync::Arc, sync::LazyLock};
 /*
@@ -15,7 +14,6 @@ the os-allocated window handle.  Lifetimes have limited meaning for things like 
 and it might as well be a pointer because in reality, Rust code knows nothing about when
 the host application or OS might choose to deallocate it - its allocation is beyond Rust's
 control in the first place.
-
 */
 
 /// A transparent wrapper over the library handling window management's window

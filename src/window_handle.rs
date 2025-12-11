@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::{cell::RefCell, mem, rc::Rc, sync::Arc};
 
 use muda::MenuId;
-use windowing::internal_api::WindowingBackend as _;
-use windowing::WindowingSystem;
+use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 use ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey};

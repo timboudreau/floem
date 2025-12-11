@@ -1,14 +1,14 @@
 use crate::{
-    ScreenLayout, WindowIdExt, WindowIdExtSealed, WindowingSystem,
-    internal_api::{WindowUpdate, WindowingBackendInternal},
+    internal_api::{WindowUpdate, WindowingSystem, WindowingBackendInternal},
     private::window_tracking::{force_window_repaint, with_window},
+    public_api::{ScreenLayout, WindowIdExt, WindowIdExtSealed},
     winit::{
         window_geometry::{
             monitor_bounds, window_inner_screen_bounds, window_inner_screen_position,
             window_outer_screen_bounds, window_outer_screen_position,
         },
         winit_screen_layout::screen_layout_for_window,
-    },
+    }
 };
 use peniko::kurbo::{Point, Rect};
 use std::ops::{Deref, DerefMut};

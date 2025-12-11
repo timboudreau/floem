@@ -1,4 +1,4 @@
-use crate::ScreenLayout;
+use super::ScreenLayout;
 #[cfg(target_os = "macos")]
 use crate::internal_api::WindowUpdate;
 use peniko::kurbo::{Point, Rect, Size};

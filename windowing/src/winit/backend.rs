@@ -1,15 +1,13 @@
 use winit::dpi::{LogicalPosition, LogicalSize};
-
 use crate::{
-    NativeWindow, ScreenLayout, ViewId, WindowIdentifier,
+    common::{ScreenLayout, ViewId},
     internal_api::{WindowUpdate, WindowingBackend, WindowingBackendInternal},
-    private::window_tracking::with_window,
-    winit::{
-        window_geometry::bounds_to_logical_outer_position_and_inner_size,
-        winit_screen_layout::try_create_screen_layout,
-    },
+    private::window_tracking::with_window, internal_api::WindowingSystem,
 };
 use std::{cell::RefCell, collections::HashMap};
+use super::{
+    window_geometry::bounds_to_logical_outer_position_and_inner_size, winit_screen_layout::try_create_screen_layout, NativeWindow, WindowIdentifier
+};
 
 // Using thread_local for consistency with static vars in updates.rs, but I suspect these
 // are thread_local not because thread-locality is desired, but only because static mutability is
@@ -33,7 +31,7 @@ impl WindowingBackend for WInit {
 
     fn process_window_updates(id: &WindowIdentifier) -> bool {
         let mut result = false;
-        if let Some(items) = crate::WindowingSystem::retreive_window_updates(id) {
+        if let Some(items) = WindowingSystem::retreive_window_updates(id) {
             result = !items.is_empty();
             for update in items {
                 match update {
