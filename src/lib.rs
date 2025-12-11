@@ -211,7 +211,6 @@ pub mod views;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
 mod window_id_ext;
-mod window_identifier;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub mod window_baseview;
@@ -242,19 +241,18 @@ pub use floem_renderer::Renderer;
 pub use floem_renderer::Svg as RendererSvg;
 pub use floem_renderer::gpu_resources::GpuResources;
 pub use floem_renderer::text;
-pub use id::ViewId;
+pub use id::{RootViewProvider, ViewId};
 pub use imbl;
 pub use muda;
 pub use peniko;
 pub use peniko::kurbo;
-pub use screen_layout::ScreenLayout;
 pub use taffy;
 pub use ui_events;
 pub use view::{AnyView, IntoView, View, default_compute_layout, recursively_layout_view};
 pub use view_state::{Stack, StackOffset};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub use window::{close_window, new_window};
-pub use window_identifier::*;
+pub use windowing::*;
 
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 pub use window_baseview::{WindowConfig, close_window, new_window};

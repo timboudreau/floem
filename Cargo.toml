@@ -145,8 +145,8 @@ objc2-app-kit = { version = "0.3", features = [
 
 [features]
 default = ["editor", "default-image-formats", "vger", "winit"]
-winit = ["dep:winit", "dep:ui-events-winit", "event/winit", "floem_renderer/winit"]
-baseview = ["dep:baseview", "dep:ui-events-baseview", "floem_renderer/baseview"]
+winit = ["dep:winit", "dep:ui-events-winit", "event/winit", "floem_renderer/winit", "windowing/winit"]
+baseview = ["dep:baseview", "dep:ui-events-baseview", "floem_renderer/baseview", "windowing/baseview"]
 vello = ["dep:floem_vello_renderer"]
 vger = ["dep:floem_vger_renderer"]
 serde = [

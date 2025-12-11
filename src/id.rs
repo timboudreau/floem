@@ -33,6 +33,12 @@ new_key_type! {
    pub struct ViewId;
 }
 
+/// Represents a window which can look up the `ViewId` of the outermost view it contains.
+pub trait RootViewProvider {
+    /// Get the root view of this window.
+    fn root_view(&self) -> Option<ViewId>;
+}
+
 impl ViewId {
     /// Create a new unique `Viewid`.
     pub fn new() -> ViewId {

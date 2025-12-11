@@ -1,3 +1,6 @@
-// mod window_id_ext;
+mod screen_layout;
 
-// pub use window_id_ext::*;
+pub use screen_layout::*;
+
+/// Defines the type contract for an id that represents a window.
+pub trait WindowIdDelegate: Copy + Clone + PartialEq + Eq + PartialOrd + Ord + std::hash::Hash{}

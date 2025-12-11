@@ -7,6 +7,8 @@ rust-version.workspace = true
 repository.workspace = true
 
 [features]
+# default = ["winit"] # deleteme!
+
 winit = ["dep:winit"]
 baseview = ["dep:baseview"]
 

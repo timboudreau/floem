@@ -1,8 +1,5 @@
 use crate::{
-    ScreenLayout, ViewId, WindowIdExt, WindowIdentifier,
-    screen_layout::screen_layout_for_window,
-    window_id_ext::{WindowIdExtSealed, WindowUpdate},
-    window_tracking::{NativeWindow, force_window_repaint, with_window},
+    id::RootViewProvider, screen_layout::screen_layout_for_window, window_id_ext::{WindowIdExtSealed, WindowUpdate}, window_tracking::{force_window_repaint, with_window, NativeWindow}, ScreenLayout, ViewId, WindowIdExt, WindowIdentifier
 };
 use std::{cell::RefCell, collections::HashMap};
 
@@ -92,16 +89,19 @@ impl WindowIdExt for WindowIdentifier {
         force_window_repaint(self)
     }
 
-    fn root_view(&self) -> Option<ViewId> {
-        root_view_id(self)
-    }
-
     fn screen_layout(&self) -> Option<ScreenLayout> {
         with_window(self, move |window| screen_layout_for_window(*self, window)).unwrap_or(None)
     }
 
     fn scale(&self) -> f64 {
         with_window(self, |window| window.scale_factor()).unwrap_or(1.0)
+    }
+}
+
+impl RootViewProvider for WindowIdentifier {
+    /// Get the root view of this window.
+    fn root_view(&self) -> Option<ViewId> {
+        root_view_id(self)
     }
 }
 

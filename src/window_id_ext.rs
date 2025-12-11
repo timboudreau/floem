@@ -2,7 +2,7 @@ use peniko::kurbo::{Point, Rect, Size};
 #[cfg(feature = "winit")]
 use winit::window::UserAttentionType;
 
-use crate::{ScreenLayout, ViewId};
+use crate::ScreenLayout;
 
 /// Delegate enum for `winit`'s [`UserAttentionType`](https://docs.rs/winit/latest/winit/window/enum.UserAttentionType.html)
 ///
@@ -177,9 +177,6 @@ pub trait WindowIdExt: WindowIdExtSealed {
     /// Returns true if the repaint request was issued successfully (i.e. there is
     /// an actual system-level window corresponding to this `WindowId`).
     fn force_repaint(&self) -> bool;
-
-    /// Get the root view of this window.
-    fn root_view(&self) -> Option<ViewId>;
 
     /// Get a layout of this window in relation to the monitor on which it currently
     /// resides, if any.
