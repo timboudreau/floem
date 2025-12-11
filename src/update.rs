@@ -1,6 +1,7 @@
 use std::{any::Any, cell::RefCell, collections::HashMap};
 
 use peniko::kurbo::{Point, Rect, Size, Vec2};
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::window::{ResizeDirection, Theme};
 
 use crate::{id::ViewId, menu::Menu, view::View};
@@ -39,7 +40,10 @@ pub(crate) enum UpdateMessage {
     SetWindowMaximized(bool),
     MinimizeWindow,
     DragWindow,
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
     DragResizeWindow(ResizeDirection),
+    #[cfg(all(feature = "baseview", not(feature = "winit")))]
+    DragResizeWindow,
     SetWindowDelta(Vec2),
     ShowContextMenu { menu: Menu, pos: Option<Point> },
     WindowMenu { menu: Menu },
@@ -53,5 +57,6 @@ pub(crate) enum UpdateMessage {
     SetImeCursorArea { position: Point, size: Size },
     WindowVisible(bool),
     ViewTransitionAnimComplete(ViewId),
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
     SetTheme(Option<Theme>),
 }

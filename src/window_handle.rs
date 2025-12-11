@@ -6,7 +6,10 @@ use muda::MenuId;
 use std::time::{Duration, Instant};
 use ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey};
 use ui_events::pointer::PointerEvent;
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use ui_events_winit::WindowEventReducer;
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+use ui_events_baseview::WindowEventReducer;
 
 use winit::window::{
     ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,

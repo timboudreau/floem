@@ -10,6 +10,7 @@ use std::sync::atomic::AtomicU64;
 
 use floem_reactive::{SignalWith, UpdaterEffect};
 use peniko::kurbo::{Point, Size, Vec2};
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::window::{ResizeDirection, Theme};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -59,9 +60,16 @@ pub fn drag_window() {
     add_update_message(UpdateMessage::DragWindow);
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// If and while the mouse is pressed, allow the window to be resized.
 pub fn drag_resize_window(direction: ResizeDirection) {
     add_update_message(UpdateMessage::DragResizeWindow(direction));
+}
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+/// If and while the mouse is pressed, allow the window to be resized.
+pub fn drag_resize_window() {
+    add_update_message(UpdateMessage::DragResizeWindow);
 }
 
 /// Move the window by a specified delta.
@@ -81,6 +89,7 @@ pub fn inspect() {
     add_update_message(UpdateMessage::Inspect);
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Set the **global** app theme in all windows.
 ///
 /// Toggles both floem and window themes.
@@ -88,6 +97,7 @@ pub fn set_global_theme(theme: Theme) {
     add_app_update_event(AppUpdateEvent::ThemeChanged { theme });
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Set the **window** theme.
 ///
 /// Specify `None` to reset the theme to the system default.
@@ -95,6 +105,7 @@ pub fn set_theme(theme: Option<Theme>) {
     add_update_message(UpdateMessage::SetTheme(theme));
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **global** app theme.
 pub fn toggle_global_theme() {
     let theme = current_theme().unwrap_or(Theme::Dark);
@@ -105,6 +116,7 @@ pub fn toggle_global_theme() {
     add_app_update_event(AppUpdateEvent::ThemeChanged { theme });
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **window** theme.
 pub fn toggle_window_theme() {
     let theme = current_theme().unwrap_or(Theme::Dark);
@@ -116,6 +128,7 @@ pub fn toggle_window_theme() {
     add_update_message(UpdateMessage::SetTheme(Some(theme)));
 }
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Get current window theme.
 pub fn current_theme() -> Option<Theme> {
     let win_id = get_current_view().window_id()?;

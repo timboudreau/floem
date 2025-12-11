@@ -1,0 +1,16 @@
+[package]
+name = "windowing"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[features]
+winit = ["dep:winit"]
+baseview = ["dep:baseview"]
+
+[dependencies]
+winit = { workspace = true, optional = true }
+baseview = { workspace = true, optional = true}
+peniko = { workspace = true }
