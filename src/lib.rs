@@ -179,9 +179,13 @@
 pub mod action;
 pub mod animate;
 mod app;
+mod app_config;
 #[cfg(target_os = "macos")]
 mod app_delegate;
+mod app_events;
 mod app_handle;
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+mod app_winit;
 #[cfg(feature = "vello")]
 mod border_path_iter;
 mod clipboard;
@@ -231,7 +235,8 @@ pub mod receiver_signal {
     pub use stream_signal::*;
 }
 
-pub use app::{AppConfig, AppEvent, Application, launch, quit_app, reopen};
+pub use crate::{app::{Application, launch, quit_app, reopen}, app_config::AppConfig, app_events::AppEvent};
+pub use adapters::*;
 pub use clipboard::{Clipboard, ClipboardError};
 pub use event;
 pub use floem_reactive as reactive;

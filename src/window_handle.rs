@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::{cell::RefCell, mem, rc::Rc, sync::Arc};
 
+use adapters::WindowSystemTheme;
 use muda::MenuId;
 use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
 #[cfg(not(target_arch = "wasm32"))]
@@ -40,7 +41,7 @@ use crate::views::{Decorators, container, stack};
 use crate::NativeWindow;
 use crate::{
     Application,
-    app::UserEvent,
+    app_events::UserEvent,
     context::{
         ComputeLayoutCx, EventCx, FrameUpdate, LayoutCx, PaintCx, PaintState, StyleCx, UpdateCx,
     },
@@ -109,8 +110,8 @@ impl WindowHandle {
         let size: LogicalSize<f64> = window.surface_size().to_logical(scale);
         let size = Size::new(size.width, size.height);
         let size = scope.create_rw_signal(Size::new(size.width, size.height));
-        let os_theme = window.theme();
-        // let current_theme = apply_theme.unwrap_or(os_theme.unwrap_or(winit::window::Theme::Light));
+        let os_theme = window.theme().map(WindowSystemTheme::from);
+
         let is_maximized = window.is_maximized();
 
         set_current_view(id);
@@ -219,10 +220,10 @@ impl WindowHandle {
             .set_root_size(size.get_untracked());
 
         window_handle.window_state.light_dark_theme =
-            os_theme.unwrap_or(winit::window::Theme::Light);
+            os_theme.unwrap_or(WindowSystemTheme::Light);
 
         window_handle.event(Event::ThemeChanged(
-            window_handle.window_state.light_dark_theme,
+            window_handle.window_state.light_dark_theme.into(),
         ));
         window_handle.size(size.get_untracked());
         window_handle
@@ -493,12 +494,13 @@ impl WindowHandle {
         self.schedule_repaint();
     }
 
-    pub(crate) fn set_theme(&mut self, theme: Option<winit::window::Theme>, change_from_os: bool) {
+    pub(crate) fn set_theme(&mut self, theme: Option<WindowSystemTheme>, change_from_os: bool) {
         if change_from_os && self.window_state.theme_overriden {
             // if the window theme has been set manually then changes from the os shouldn't do anything
             return;
         }
         if let Some(theme) = theme {
+            let theme : WindowSystemTheme = theme.into();
             // Only override the theme with the default if the user did not provide one
             if self.default_theme.is_some() {
                 self.default_theme = Some(default_theme(theme));
@@ -515,12 +517,12 @@ impl WindowHandle {
             self.window_state.theme_overriden = false;
         }
         if !change_from_os {
-            self.window.set_theme(theme);
+            self.window.set_theme(theme.map(WindowSystemTheme::into));
         }
         self.id.request_all();
         request_recursive_changes(self.id, ChangeFlags::STYLE);
         if let Some(theme) = theme {
-            self.event(Event::ThemeChanged(theme));
+            self.event(Event::ThemeChanged(theme.into()));
         }
     }
 

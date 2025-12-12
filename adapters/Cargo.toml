@@ -1,0 +1,14 @@
+[package]
+name = "adapters"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[features]
+default = ["winit"] # deleteme
+winit = ["dep:winit"]
+
+[dependencies]
+winit = { workspace = true, optional = true }

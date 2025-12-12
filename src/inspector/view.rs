@@ -1,5 +1,5 @@
 use crate::WindowIdentifier;
-use crate::app::{AppUpdateEvent, add_app_update_event};
+use crate::app_events::{add_app_update_event, AppUpdateEvent};
 use crate::event::{Event, EventListener, EventPropagation};
 use crate::inspector::data::{CapturedData, CapturedDatas};
 use crate::inspector::{

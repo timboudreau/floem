@@ -1,13 +1,15 @@
-use winit::dpi::{LogicalPosition, LogicalSize};
+use super::{
+    NativeWindow, WindowIdentifier,
+    window_geometry::bounds_to_logical_outer_position_and_inner_size,
+    winit_screen_layout::try_create_screen_layout,
+};
 use crate::{
     common::{ScreenLayout, ViewId},
-    internal_api::{WindowUpdate, WindowingBackend, WindowingBackendInternal},
-    private::window_tracking::with_window, internal_api::WindowingSystem,
+    internal_api::{WindowUpdate, WindowingBackend, WindowingBackendInternal, WindowingSystem},
+    private::window_tracking::with_window,
 };
 use std::{cell::RefCell, collections::HashMap};
-use super::{
-    window_geometry::bounds_to_logical_outer_position_and_inner_size, winit_screen_layout::try_create_screen_layout, NativeWindow, WindowIdentifier
-};
+use winit::dpi::{LogicalPosition, LogicalSize};
 
 // Using thread_local for consistency with static vars in updates.rs, but I suspect these
 // are thread_local not because thread-locality is desired, but only because static mutability is
@@ -68,7 +70,7 @@ impl WindowingBackend for WInit {
                     }
                     WindowUpdate::RequestAttention(att) => {
                         with_window(id, |window| {
-                            window.request_user_attention(att);
+                            window.request_user_attention(att.into());
                         });
                     }
                     WindowUpdate::Minimize(minimize) => {

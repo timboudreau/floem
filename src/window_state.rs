@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
+use adapters::WindowSystemTheme;
 use muda::MenuId;
 use peniko::kurbo::{Point, Size};
 use taffy::{AvailableSpace, NodeId};
 use winit::cursor::CursorIcon;
-use winit::window::Theme;
 
 use crate::{
     context::{DragState, FrameUpdate},
@@ -42,7 +42,7 @@ pub struct WindowState {
     pub(crate) focusable: HashSet<ViewId>,
     pub(crate) file_hovered: HashSet<ViewId>,
     // whether the window is in light or dark mode
-    pub(crate) light_dark_theme: winit::window::Theme,
+    pub(crate) light_dark_theme: WindowSystemTheme,
     // if `true`, then the window will not follow the os theme changes
     pub(crate) theme_overriden: bool,
     /// This keeps track of all views that have an animation,
@@ -58,7 +58,7 @@ pub struct WindowState {
 }
 
 impl WindowState {
-    pub fn new(root_view_id: ViewId, os_theme: Option<Theme>) -> Self {
+    pub fn new(root_view_id: ViewId, os_theme: Option<WindowSystemTheme>) -> Self {
         Self {
             root: None,
             root_view_id,
@@ -79,7 +79,7 @@ impl WindowState {
             focusable: HashSet::new(),
             file_hovered: HashSet::new(),
             theme_overriden: false,
-            light_dark_theme: os_theme.unwrap_or(Theme::Light),
+            light_dark_theme: os_theme.unwrap_or_default(), // default is light
             cursor: None,
             last_cursor: CursorIcon::Default,
             last_cursor_location: Default::default(),
@@ -155,7 +155,7 @@ impl WindowState {
     }
 
     pub fn is_dark_mode(&self) -> bool {
-        self.light_dark_theme == Theme::Dark
+        self.light_dark_theme.is_dark()
     }
 
     pub fn is_file_hover(&self, id: &ViewId) -> bool {

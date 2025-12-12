@@ -16,8 +16,6 @@ the host application or OS might choose to deallocate it - its allocation is bey
 control in the first place.
 */
 
-/// A transparent wrapper over the library handling window management's window
-/// identity abstraction.
 new_key_type! {
     /// A small unique identifier for an instance of a `View`.
     ///

@@ -1,79 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
-
 #[cfg(feature = "crossbeam")]
-use crossbeam::channel::{Receiver, Sender, unbounded as channel};
-use muda::MenuId;
-#[cfg(not(feature = "crossbeam"))]
-use std::sync::mpsc::{Receiver, Sender, channel};
+use crossbeam::channel::{Receiver};
 
-use crate::WindowIdentifier;
-use floem_reactive::{Runtime, WriteSignal};
-use parking_lot::Mutex;
-use raw_window_handle::HasDisplayHandle;
-use winit::{
-    application::ApplicationHandler,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    window::{Theme, WindowId},
-};
+#[cfg(not(feature = "crossbeam"))]
+use std::sync::mpsc::{Receiver};
+
+use crate::{app_events::UserEvent, AppConfig, AppEvent, WindowIdentifier};
+use floem_reactive::{Runtime};
 
 use crate::{
-    action::{Timer, TimerToken},
     app_handle::ApplicationHandle,
-    clipboard::Clipboard,
-    inspector::Capture,
-    profiler::Profile,
     view::IntoView,
     window::{WindowConfig, WindowCreation},
 };
-
-pub(crate) type AppEventCallback = dyn Fn(AppEvent);
-
-static EVENT_LOOP_PROXY: Mutex<Option<(EventLoopProxy, Sender<UserEvent>)>> = Mutex::new(None);
-
-thread_local! {
-    pub(crate) static APP_UPDATE_EVENTS: RefCell<Vec<AppUpdateEvent>> = Default::default();
-}
-
-#[derive(Debug)]
-pub struct AppConfig {
-    pub(crate) exit_on_close: bool,
-    pub(crate) wgpu_features: wgpu::Features,
-    pub(crate) global_theme_override: Option<Theme>,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            exit_on_close: !cfg!(target_os = "macos"),
-            wgpu_features: wgpu::Features::default(),
-            global_theme_override: None,
-        }
-    }
-}
-
-impl AppConfig {
-    /// Sets whether the application should exit when the last window is closed.
-    #[inline]
-    pub fn exit_on_close(mut self, exit_on_close: bool) -> Self {
-        self.exit_on_close = exit_on_close;
-        self
-    }
-
-    /// Sets the WGPU features to be used by the application.
-    #[inline]
-    pub fn wgpu_features(mut self, features: wgpu::Features) -> Self {
-        self.wgpu_features = features;
-        self
-    }
-
-    /// Sets the global theme.
-    #[inline]
-    pub fn set_global_theme(mut self, theme: Theme) -> Self {
-        self.global_theme_override = Some(theme);
-        self
-    }
-}
 
 /// Initializes and runs an application with a single window.
 ///
@@ -92,68 +30,15 @@ pub fn launch<V: IntoView + 'static>(app_view: impl FnOnce() -> V + 'static) {
     Application::new().window(move |_| app_view(), None).run()
 }
 
-pub enum AppEvent {
-    WillTerminate,
-    Reopen { has_visible_windows: bool },
-}
-
-pub(crate) enum UserEvent {
-    AppUpdate,
-    Idle,
-    QuitApp,
-    #[allow(dead_code)]
-    Reopen {
-        has_visible_windows: bool,
-    },
-    GpuResourcesUpdate {
-        window_id: WindowIdentifier,
-    },
-}
-
-#[allow(clippy::large_enum_variant)]
-pub(crate) enum AppUpdateEvent {
-    NewWindow {
-        window_creation: WindowCreation,
-    },
-    CloseWindow {
-        window_id: WindowIdentifier,
-    },
-    CaptureWindow {
-        window_id: WindowIdentifier,
-        capture: WriteSignal<Option<Rc<Capture>>>,
-    },
-    ProfileWindow {
-        window_id: WindowIdentifier,
-        end_profile: Option<WriteSignal<Option<Rc<Profile>>>>,
-    },
-    RequestTimer {
-        timer: Timer,
-    },
-    CancelTimer {
-        timer: TimerToken,
-    },
-    MenuAction {
-        action_id: MenuId,
-    },
-    ThemeChanged {
-        theme: Theme,
-    },
-}
-
-pub(crate) fn add_app_update_event(event: AppUpdateEvent) {
-    APP_UPDATE_EVENTS.with(|events| {
-        events.borrow_mut().push(event);
-    });
-    Application::send_proxy_event(UserEvent::AppUpdate);
-}
-
 /// Floem top level application
 /// This is the entry point of the application.
 pub struct Application {
-    receiver: Receiver<UserEvent>,
-    handle: ApplicationHandle,
-    event_loop: Option<EventLoop>,
-    initial_windows: Vec<WindowCreation>,
+    pub(crate) receiver: Receiver<UserEvent>,
+    pub(crate) handle: ApplicationHandle,
+    pub(crate) initial_windows: Vec<WindowCreation>,
+
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
+    pub(crate) event_loop: Option<winit::event_loop::EventLoop>,
 }
 
 impl Default for Application {
@@ -162,90 +47,9 @@ impl Default for Application {
     }
 }
 
-impl ApplicationHandler for Application {
-    fn can_create_surfaces(&mut self, event_loop: &dyn ActiveEventLoop) {
-        while let Some(window_creation) = self.initial_windows.pop() {
-            self.handle.new_window(
-                event_loop,
-                window_creation.view_fn,
-                self.handle.config.global_theme_override,
-                window_creation.config.unwrap_or_default(),
-            );
-        }
-    }
-
-    fn window_event(
-        &mut self,
-        event_loop: &dyn ActiveEventLoop,
-        window_id: WindowId,
-        event: WindowEvent,
-    ) {
-        self.handle.handle_timer(event_loop);
-        self.handle
-            .handle_window_event(window_id.into(), event, event_loop);
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
-    }
-
-    fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
-        self.handle.handle_timer(event_loop);
-        for event in self.receiver.try_iter() {
-            self.handle.handle_user_event(event_loop, event);
-        }
-        self.handle.handle_updates_for_all_windows();
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
-    }
-
-    fn destroy_surfaces(&mut self, _event_loop: &dyn ActiveEventLoop) {
-        if let Some(action) = self.handle.event_listener.as_ref() {
-            action(AppEvent::WillTerminate);
-        }
-    }
-
-    fn about_to_wait(&mut self, event_loop: &dyn ActiveEventLoop) {
-        self.handle.handle_timer(event_loop);
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
-    }
-}
-
 impl Application {
     pub fn new() -> Self {
         Self::new_with_config(AppConfig::default())
-    }
-    pub fn new_with_config(config: AppConfig) -> Self {
-        crate::screen_layout::ensure_windowing_system_initialized();
-        let event_loop = EventLoop::new().expect("can't start the event loop");
-
-        #[cfg(target_os = "macos")]
-        crate::app_delegate::set_app_delegate();
-
-        let event_loop_proxy = event_loop.create_proxy();
-        let (sender, receiver) = channel();
-
-        *EVENT_LOOP_PROXY.lock() = Some((event_loop_proxy.clone(), sender));
-        unsafe {
-            Clipboard::init(event_loop.display_handle().unwrap().as_raw());
-        }
-        let handle = ApplicationHandle::new(config);
-
-        #[cfg(any(target_os = "windows", target_os = "macos"))]
-        muda::MenuEvent::set_event_handler(Some(move |event: muda::MenuEvent| {
-            add_app_update_event(AppUpdateEvent::MenuAction {
-                action_id: event.id,
-            });
-        }));
-
-        Self {
-            receiver,
-            handle,
-            event_loop: Some(event_loop),
-            initial_windows: Vec::new(),
-        }
     }
 
     pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
@@ -272,20 +76,11 @@ impl Application {
         self
     }
 
-    #[cfg_attr(debug_assertions, track_caller)]
-    pub fn run(mut self) {
+    /// Common pre-init tasks
+    pub(crate) fn on_before_run() {
         Runtime::init_on_ui_thread();
         // Nudge UI when sync signals are updated from other threads.
         Runtime::set_sync_effect_waker(|| Application::send_proxy_event(UserEvent::Idle));
-        let event_loop = self.event_loop.take().unwrap();
-        let _ = event_loop.run_app(self);
-    }
-
-    pub(crate) fn send_proxy_event(event: UserEvent) {
-        if let Some((proxy, sender)) = EVENT_LOOP_PROXY.lock().as_ref() {
-            let _ = sender.send(event);
-            proxy.wake_up();
-        }
     }
 }
 

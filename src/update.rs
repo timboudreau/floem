@@ -1,8 +1,10 @@
 use std::{any::Any, cell::RefCell, collections::HashMap};
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+use adapters::WindowSystemTheme;
 use peniko::kurbo::{Point, Rect, Size, Vec2};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
-use winit::window::{ResizeDirection, Theme};
+use winit::window::{ResizeDirection};
 
 use crate::{ViewId, ViewIdentifier, menu::Menu, view::View};
 
@@ -58,5 +60,5 @@ pub(crate) enum UpdateMessage {
     WindowVisible(bool),
     ViewTransitionAnimComplete(ViewId),
     #[cfg(all(feature = "winit", not(feature = "baseview")))]
-    SetTheme(Option<Theme>),
+    SetTheme(Option<WindowSystemTheme>),
 }

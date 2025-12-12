@@ -1,3 +1,4 @@
+use adapters::WindowSystemTheme;
 use peniko::kurbo::{Affine, Point, Size, Vec2};
 use ui_events::{
     ScrollDelta,
@@ -6,8 +7,6 @@ use ui_events::{
         PointerButtonEvent, PointerEvent, PointerGestureEvent, PointerScrollEvent, PointerUpdate,
     },
 };
-#[cfg(feature = "winit")]
-use winit::window::Theme;
 
 use crate::dropped_file::{self, FileDragEvent};
 use dpi::LogicalPosition;
@@ -85,7 +84,6 @@ pub enum EventListener {
     FocusGained,
     /// Receives [`Event::FocusLost`]
     FocusLost,
-    #[cfg(feature = "winit")]
     /// Receives [`Event::ThemeChanged`]
     ThemeChanged,
     /// Receives [`Event::WindowClosed`]
@@ -126,12 +124,13 @@ pub enum Event {
     WindowResized(Size),
     WindowMoved(Point),
     WindowMaximizeChanged(bool),
-    #[cfg(feature = "winit")]
-    ThemeChanged(Theme),
+    ThemeChanged(WindowSystemTheme),
     FocusGained,
     FocusLost,
     WindowScaleChanged(f64),
     #[cfg(not(feature = "winit"))]
+    /// See discussion here for the necessity of this:
+    /// https://github.com/RustAudio/baseview/issues/124#issuecomment-1374100419
     WindowWillClose,
 }
 
@@ -166,7 +165,6 @@ impl Event {
 
     pub fn allow_disabled(&self) -> bool {
         match self {
-            #[cfg(feature = "winit")]
             Event::ThemeChanged(_) => true,
             Event::Pointer(PointerEvent::Leave(_) | PointerEvent::Move(_))
             | Event::WindowClosed
@@ -250,7 +248,6 @@ impl Event {
 
     pub fn transform(mut self, transform: Affine) -> Event {
         match &mut self {
-            #[cfg(feature = "winit")]
             Event::ThemeChanged(_) => (),
             Event::Pointer(
                 PointerEvent::Down(PointerButtonEvent { state, .. })
@@ -312,8 +309,6 @@ impl Event {
             | Event::WindowGotFocus
             | Event::WindowLostFocus => {}
             #[cfg(not(feature = "winit"))]
-            /// See discussion here for the necessity of this:
-            /// https://github.com/RustAudio/baseview/issues/124#issuecomment-1374100419
             Event::WindowWillClose => (),
         }
         self
@@ -350,11 +345,10 @@ impl Event {
             Event::WindowLostFocus => Some(EventListener::WindowLostFocus),
             Event::FocusLost => Some(EventListener::FocusLost),
             Event::FocusGained => Some(EventListener::FocusGained),
-            #[cfg(feature = "winit")]
             Event::ThemeChanged(_) => Some(EventListener::ThemeChanged),
             Event::FileDrag(FileDragEvent::DragDropped { .. }) => Some(EventListener::DroppedFiles),
             #[cfg(not(feature = "winit"))]
-            WindowWillClose => Some(EventListener::WindowWillClose),
+            Event::WindowWillClose => Some(EventListener::WindowWillClose),
             _ => None, // TODO
         }
     }

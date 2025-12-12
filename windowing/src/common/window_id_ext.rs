@@ -1,36 +1,9 @@
 use super::ScreenLayout;
+#[cfg(feature = "winit")]
+use crate::common::Urgency;
 #[cfg(target_os = "macos")]
 use crate::internal_api::WindowUpdate;
 use peniko::kurbo::{Point, Rect, Size};
-#[cfg(feature = "winit")]
-use winit::window::UserAttentionType;
-
-/// Delegate enum for `winit`'s [`UserAttentionType`](https://docs.rs/winit/latest/winit/window/enum.UserAttentionType.html)
-///
-/// This is used for making the window's icon bounce in the macOS dock or the equivalent of that on
-/// other platforms.
-#[derive(Default, Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Urgency {
-    Critical,
-    Informational,
-
-    /// The default attention type (equivalent of passing `None` to `winit::Window::request_user_attention())`).
-    /// On some platforms (X11), it is necessary to call `WindowIdentifier.request_attention(Urgency::Default)` to stop
-    /// the attention-seeking behavior of the window.
-    #[default]
-    Default,
-}
-
-#[cfg(feature = "winit")]
-impl From<Urgency> for Option<UserAttentionType> {
-    fn from(urgency: Urgency) -> Self {
-        match urgency {
-            Urgency::Critical => Some(UserAttentionType::Critical),
-            Urgency::Informational => Some(UserAttentionType::Informational),
-            Urgency::Default => None,
-        }
-    }
-}
 
 /// Ensures `WindowIdExt` cannot be implemented on arbitrary types.
 pub(crate) trait WindowIdExtSealed: Sized + Copy {
@@ -142,7 +115,8 @@ pub trait WindowIdExt: WindowIdExtSealed {
     /// the dock on macOS.  On X11, after calling this method with some urgency
     /// other than `None`, it is necessary to *clear* the attention-seeking state
     /// by calling this method again with `Urgency::None`.
-    fn request_attention(&self, urgency: Urgency) {
+    fn request_attention(&self, urgency: impl Into<Urgency>) {
+        // use Impl<Into> to allow old code using winit types to compile
         self.add_window_update(WindowUpdate::RequestAttention(urgency.into()))
     }
 

@@ -18,6 +18,7 @@ use crate::{
         slider::{SliderClass, SliderCustomStyle},
     },
 };
+use adapters::WindowSystemTheme;
 use floem_renderer::text::Weight;
 use peniko::{Brush, Color, color::palette::css};
 use smallvec::smallvec;
@@ -378,7 +379,8 @@ pub fn overlay_style() -> Style {
         .dark_mode(|s| s.border(1).border_top(2.))
 }
 
-pub(crate) fn default_theme(os_theme: winit::window::Theme) -> Style {
+pub(crate) fn default_theme(os_theme: impl Into<WindowSystemTheme>) -> Style {
+    let os_theme : WindowSystemTheme = os_theme.into();
     let button_style = Style::new()
         .custom_style_class(|s: LabelCustomStyle| s.selectable(false))
         .with_theme(|s, t| {
@@ -552,7 +554,7 @@ pub(crate) fn default_theme(os_theme: winit::window::Theme) -> Style {
     // });
 
     Style::new()
-        .apply_if(os_theme == winit::window::Theme::Light, |s| {
+        .apply_if(os_theme.is_light(), |s| {
             let light = DesignSystem::light();
             s.color(light.text())
                 .font_size(light.font_size())
@@ -560,7 +562,7 @@ pub(crate) fn default_theme(os_theme: winit::window::Theme) -> Style {
                 .color(light.text())
                 .theme(light)
         })
-        .apply_if(os_theme == winit::window::Theme::Dark, |s| {
+        .apply_if(os_theme.is_dark(), |s| {
             let dark = DesignSystem::dark();
             s.color(dark.text())
                 .font_size(dark.font_size())

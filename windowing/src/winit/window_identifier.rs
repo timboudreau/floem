@@ -1,5 +1,5 @@
 use crate::{
-    internal_api::{WindowUpdate, WindowingSystem, WindowingBackendInternal},
+    internal_api::{WindowUpdate, WindowingBackendInternal, WindowingSystem},
     private::window_tracking::{force_window_repaint, with_window},
     public_api::{ScreenLayout, WindowIdExt, WindowIdExtSealed},
     winit::{
@@ -8,7 +8,7 @@ use crate::{
             window_outer_screen_bounds, window_outer_screen_position,
         },
         winit_screen_layout::screen_layout_for_window,
-    }
+    },
 };
 use peniko::kurbo::{Point, Rect};
 use std::ops::{Deref, DerefMut};

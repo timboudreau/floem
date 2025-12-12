@@ -1,14 +1,14 @@
-use crate::WindowIdentifier;
-use crate::app::{AppUpdateEvent, add_app_update_event};
-use crate::event::{EventListener, EventPropagation};
-use crate::inspector::header;
-use crate::theme::StyleThemeExt;
-use crate::unit::UnitExt;
-use crate::view::IntoView;
-use crate::views::{
-    ContainerExt, Decorators, button, clip, container, dyn_container, empty, h_stack, label,
-    scroll, stack, static_label, text, v_stack, v_stack_from_iter,
-};
+use crate::{app_events::add_app_update_event,
+    app_events::AppUpdateEvent, event::{EventListener, EventPropagation},
+    inspector::header,
+    theme::StyleThemeExt,
+    unit::UnitExt,
+    view::IntoView,
+    views::{
+        button, clip, container, dyn_container, empty, h_stack, label, scroll, stack, static_label, text, v_stack, v_stack_from_iter, ContainerExt, Decorators
+        },
+    WindowIdentifier};
+
 use floem_reactive::{RwSignal, Scope, SignalGet, SignalUpdate};
 use std::fmt::Display;
 use std::mem;

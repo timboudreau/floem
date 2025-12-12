@@ -1,3 +1,4 @@
+use adapters::WindowSystemTheme;
 use dpi::PhysicalPosition;
 use floem_renderer::gpu_resources::GpuResources;
 use windowing::internal_api::{WindowingBackend, WindowingSystem};
@@ -26,11 +27,12 @@ use winit::{
     window::Theme,
 };
 
-use crate::app::AppConfig;
+use crate::app_config::AppConfig;
 use crate::{
     AppEvent, WindowIdentifier,
     action::{Timer, TimerToken},
-    app::{APP_UPDATE_EVENTS, AppEventCallback, AppUpdateEvent, UserEvent},
+    app_events::AppEventCallback,
+    app_events::{AppUpdateEvent, UserEvent},
     context::PaintState,
     event::FileDragEvent::{self, DragDropped},
     ext_event::EXT_EVENT_HANDLER,
@@ -109,17 +111,14 @@ impl ApplicationHandle {
     }
 
     pub(crate) fn handle_update_event(&mut self, event_loop: &dyn ActiveEventLoop) {
-        let events = APP_UPDATE_EVENTS.with(|events| {
-            let mut events = events.borrow_mut();
-            std::mem::take(&mut *events)
-        });
+        let events = crate::app_events::retreive_app_update_events();
 
         for event in events {
             match event {
                 AppUpdateEvent::NewWindow { window_creation } => self.new_window(
                     event_loop,
                     window_creation.view_fn,
-                    self.config.global_theme_override,
+                    self.config.global_theme_override.map(WindowSystemTheme::from),
                     window_creation.config.unwrap_or_default(),
                 ),
                 AppUpdateEvent::CloseWindow { window_id } => {
@@ -304,7 +303,7 @@ impl ApplicationHandle {
                 window_handle.scale(scale_factor);
             }
             WindowEvent::ThemeChanged(theme) => {
-                window_handle.set_theme(Some(theme), true);
+                window_handle.set_theme(Some(theme.into()), true);
             }
             WindowEvent::Occluded(_) => {}
             WindowEvent::RedrawRequested => {
@@ -350,7 +349,7 @@ impl ApplicationHandle {
         &mut self,
         event_loop: &dyn ActiveEventLoop,
         view_fn: Box<dyn FnOnce(WindowIdentifier) -> Box<dyn View>>,
-        override_theme: Option<Theme>,
+        override_theme: Option<WindowSystemTheme>,
         #[allow(unused_variables)] WindowConfig {
             size,
             min_size,
@@ -393,9 +392,9 @@ impl ApplicationHandle {
             // .with_theme(theme_override)
             .with_enabled_buttons(enabled_buttons);
         if theme_override.is_none() {
-            window_attributes = window_attributes.with_theme(override_theme);
+            window_attributes = window_attributes.with_theme(override_theme.map(Theme::from));
         } else {
-            window_attributes = window_attributes.with_theme(theme_override);
+            window_attributes = window_attributes.with_theme(theme_override.map(Theme::from));
         }
 
         #[cfg(target_arch = "wasm32")]

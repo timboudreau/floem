@@ -1,6 +1,5 @@
+use crate::common::Urgency;
 use peniko::kurbo::{Point, Rect, Size};
-#[cfg(feature = "winit")]
-use winit::window::UserAttentionType;
 
 /// Enum of state updates that can be requested on a window which are processed
 /// asynchronously after event processing.
@@ -14,8 +13,7 @@ pub enum WindowUpdate {
     // also to support setting the two things winit supports directly:
     OuterLocation(Point),
     InnerSize(Size),
-    #[cfg(feature = "winit")]
-    RequestAttention(Option<UserAttentionType>),
+    RequestAttention(Urgency),
     Minimize(bool),
     Maximize(bool),
     // macOS only

@@ -1,5 +1,5 @@
-use peniko::kurbo::{Point, Rect, Size};
 use crate::public_api::WindowIdentifier;
+use peniko::kurbo::{Point, Rect, Size};
 
 /// A `ScreenLayout` is a snapshot of the layout of a view within a window
 ///

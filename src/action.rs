@@ -8,10 +8,12 @@
 
 use std::sync::atomic::AtomicU64;
 
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+use adapters::WindowSystemTheme;
 use floem_reactive::{SignalWith, UpdaterEffect};
 use peniko::kurbo::{Point, Size, Vec2};
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
-use winit::window::{ResizeDirection, Theme};
+use winit::window::ResizeDirection;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
@@ -19,7 +21,7 @@ use std::time::{Duration, Instant};
 use web_time::{Duration, Instant};
 
 use crate::{
-    app::{AppUpdateEvent, add_app_update_event},
+    app_events::{add_app_update_event, AppUpdateEvent},
     ViewId,
     menu::Menu,
     update::{UPDATE_MESSAGES, UpdateMessage},
@@ -88,53 +90,43 @@ pub fn inspect() {
     add_update_message(UpdateMessage::Inspect);
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Set the **global** app theme in all windows.
 ///
 /// Toggles both floem and window themes.
-pub fn set_global_theme(theme: Theme) {
-    add_app_update_event(AppUpdateEvent::ThemeChanged { theme });
+pub fn set_global_theme(theme: impl Into<WindowSystemTheme>) {
+    add_app_update_event(AppUpdateEvent::ThemeChanged { theme : theme.into() });
 }
 
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Set the **window** theme.
 ///
 /// Specify `None` to reset the theme to the system default.
-pub fn set_theme(theme: Option<Theme>) {
+pub fn set_theme(theme: Option<WindowSystemTheme>) {
     add_update_message(UpdateMessage::SetTheme(theme));
 }
 
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **global** app theme.
 pub fn toggle_global_theme() {
-    let theme = current_theme().unwrap_or(Theme::Dark);
-    let theme = match theme {
-        Theme::Light => Theme::Dark,
-        Theme::Dark => Theme::Light,
-    };
-    add_app_update_event(AppUpdateEvent::ThemeChanged { theme });
+    add_app_update_event(AppUpdateEvent::ThemeChanged {
+        theme : current_theme().unwrap_or(WindowSystemTheme::default().opposite())
+    });
 }
 
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **window** theme.
 pub fn toggle_window_theme() {
-    let theme = current_theme().unwrap_or(Theme::Dark);
-    let theme = match theme {
-        Theme::Light => Theme::Dark,
-        Theme::Dark => Theme::Light,
-    };
-    // add_app_update_event(AppUpdateEvent::ThemeChanged { theme });
-    add_update_message(UpdateMessage::SetTheme(Some(theme)));
+    add_update_message(UpdateMessage::SetTheme(Some(current_theme().unwrap_or(WindowSystemTheme::Dark).opposite())));
 }
 
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Get current window theme.
-pub fn current_theme() -> Option<Theme> {
+pub fn current_theme() -> Option<WindowSystemTheme> {
     use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
 
     use crate::ViewIdentifier as _;
     let win_id = get_current_view().window_id()?;
-    WindowingSystem::with_window(&win_id, |w| w.theme())?
+    WindowingSystem::with_window(&win_id, |w| w.theme().map(WindowSystemTheme::from))?
 }
 
 pub(crate) struct Timer {

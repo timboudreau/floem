@@ -29,8 +29,8 @@ use floem::{
     style::{Background, CursorStyle, Transition},
     theme::StyleThemeExt,
     ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey},
-    window::{Theme, WindowConfig},
-    WindowIdentifier,
+    window::WindowConfig,
+    WindowIdentifier, WindowSystemTheme,
 };
 
 fn app_view(window_id: WindowIdentifier) -> impl IntoView {
@@ -221,10 +221,10 @@ fn app_view(window_id: WindowIdentifier) -> impl IntoView {
             .item("Toggle Window Theme", |i| i.action(toggle_window_theme))
             .separator()
             .item("Set Light Theme", |i| {
-                i.action(|| set_theme(Some(Theme::Light)))
+                i.action(|| set_theme(Some(WindowSystemTheme::Light)))
             })
             .item("Set Dark Theme", |i| {
-                i.action(|| set_theme(Some(Theme::Dark)))
+                i.action(|| set_theme(Some(WindowSystemTheme::Dark)))
             })
             .item("Follow OS Theme", |i| i.action(|| set_theme(None)))
     };

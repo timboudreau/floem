@@ -1,27 +1,74 @@
 use super::WindowUpdate;
 use crate::public_api::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier};
 use peniko::kurbo::Point;
-use std::sync::OnceLock;
 
 pub type RootFinder = fn(&ViewId) -> Option<ViewId>;
 pub type OriginFinder = fn(view: &ViewId) -> Point;
 
-static ROOT_FINDER: OnceLock<(RootFinder, OriginFinder)> = OnceLock::new();
+/*
+baseview::Window explicitly has a `PhantomData(*mut ())` field to prevent it from
+possibly being able to be wrapped in a `Send` type.
+
+That means, while we don't need such measures for winit, the baseview implementation
+has to be wrapped in a thread local to be stored at all.
+
+Since it adds some overhead on a frequently touched code path, we simply have alternate
+backing stores for each.
+*/
+
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+mod roots {
+    use super::*;
+    use std::sync::OnceLock;
+    static ROOT_FINDER: OnceLock<(RootFinder, OriginFinder)> = OnceLock::new();
+
+    pub(crate) fn root_finder() -> RootFinder {
+        ROOT_FINDER
+            .get()
+            .expect("Windowing backend not initialized")
+            .0
+    }
+
+    pub(crate) fn origin_finder() -> OriginFinder {
+        ROOT_FINDER
+            .get()
+            .expect("Windowing backend not initialized")
+            .1
+    }
+
+    pub(crate) fn set_roots(roots: (RootFinder, OriginFinder)) {
+        let _ = ROOT_FINDER.set(roots);
+    }
+}
+
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+mod roots {
+    use super::*;
+    use std::sync::OnceLock;
+    thread_local! {
+        static ROOT_FINDER: OnceLock<(RootFinder, OriginFinder)> = OnceLock::new();
+    }
+
+    pub(crate) fn root_finder() -> RootFinder {
+        ROOT_FINDER.with(|rf| rf.get().expect("Windowing backend not initialized").0)
+    }
+
+    pub(crate) fn origin_finder() -> OriginFinder {
+        ROOT_FINDER.with(|rf| rf.get().expect("Windowing backend not initialized").1)
+    }
+
+    pub(crate) fn set_roots(roots: (RootFinder, OriginFinder)) {
+        let _ = ROOT_FINDER.with(|rf| rf.set(roots));
+    }
+}
 
 /// The windowing backend - currently `winit` or `baseview` - depending on which feature flag
 /// is selected, there will be a type named `WindowingSystem` which implements support for one or the
 /// other.
 ///
 /// All functionality is implemented as associated functions, and implementations should be zero-sized.
+#[cfg(any(feature = "baseview", feature = "winit"))]
 pub trait WindowingBackend: Sized {
-    /// Because, of necessity, we define `ViewId` in this crate, but not the entire panoply of functionality
-    /// available through it, at application start we must have a few functions that can call implementation
-    /// methods set up - this allows us to have a single implementation of a few caches which are dependent
-    /// on being able to look up the root view from a view id, and find the origin of a view's outermost ancestor.
-    fn init(root_finder: RootFinder, origin_finder: OriginFinder) {
-        let _ = ROOT_FINDER.set((root_finder, origin_finder));
-    }
-
     // Pending: retrieve_window_updates and possibly push_window_update can be removed from any
     // public API at all - process window updates is now implemented here, and it can do its own
     // retrieval without exposing anything more.  Need to double check that no code in the main
@@ -33,12 +80,17 @@ pub trait WindowingBackend: Sized {
     /// Called by `ApplicationHandle` at the end of the event loop callback to process window updates.
     fn process_window_updates(id: &WindowIdentifier) -> bool;
 
+    /// Because, of necessity, we define `ViewId` in this crate, but not the entire panoply of functionality
+    /// available through it, at application start we must have a few functions that can call implementation
+    /// methods set up - this allows us to have a single implementation of a few caches which are dependent
+    /// on being able to look up the root view from a view id, and find the origin of a view's outermost ancestor.
+    fn init(root_finder: RootFinder, origin_finder: OriginFinder) {
+        roots::set_roots((root_finder, origin_finder));
+    }
+
     /// Given a `ViewId`, locate its outermost parent.
     fn root_of(view_id: &ViewId) -> Option<ViewId> {
-        let f = ROOT_FINDER
-            .get()
-            .expect("Windowing backend not initialized")
-            .0;
+        let f = roots::root_finder();
         f(view_id)
     }
 
@@ -47,10 +99,7 @@ pub trait WindowingBackend: Sized {
     /// to be `0,0` but to take into account the window's decorations (this may vary by platform and windowing
     /// back end; it is true for Mac OS).
     fn origin_of(view_id: &ViewId) -> Point {
-        let f = ROOT_FINDER
-            .get()
-            .expect("Windowing backend not initialized")
-            .1;
+        let f = roots::origin_finder();
         f(view_id)
     }
 

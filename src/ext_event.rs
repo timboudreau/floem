@@ -7,7 +7,7 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
     Application,
-    app::UserEvent,
+    app_events::UserEvent,
     window_handle::{get_current_view, set_current_view},
 };
 

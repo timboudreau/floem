@@ -1,8 +1,10 @@
 mod screen_layout;
+mod urgency;
 mod view_id;
 mod window_id_ext;
 
 pub use screen_layout::*;
+pub use urgency::*;
 pub use view_id::*;
 pub use window_id_ext::*;
 

@@ -1,3 +1,4 @@
+use adapters::WindowSystemTheme;
 use peniko::Color;
 use peniko::kurbo::{Point, Size};
 pub use winit::icon::{Icon, RgbaIcon};
@@ -10,7 +11,7 @@ pub use winit::window::WindowLevel;
 
 use crate::AnyView;
 use crate::WindowIdentifier;
-use crate::app::{AppUpdateEvent, add_app_update_event};
+use crate::app_events::{add_app_update_event, AppUpdateEvent};
 use crate::view::IntoView;
 
 pub struct WindowCreation {
@@ -35,7 +36,7 @@ pub struct WindowConfig {
     pub(crate) undecorated_shadow: bool,
     pub(crate) window_level: WindowLevel,
     /// Applies chosen theme or os theme, when `None` is provided.
-    pub(crate) theme_override: Option<Theme>,
+    pub(crate) theme_override: Option<WindowSystemTheme>,
     pub(crate) apply_default_theme: bool,
     pub(crate) font_embolden: f32,
     #[allow(dead_code)]
@@ -203,8 +204,9 @@ impl WindowConfig {
     ///
     /// If not provided, the window will follow OS theme.
     #[inline]
-    pub fn theme_override(mut self, theme_override: Theme) -> Self {
-        self.theme_override = Some(theme_override);
+    pub fn theme_override(mut self, theme_override: impl Into<WindowSystemTheme>) -> Self {
+        // use Impl<Into<WindowSystemTheme>> so old code that uses winit::Theme can build unmodified
+        self.theme_override = Some(theme_override.into());
         self
     }
 
@@ -330,7 +332,8 @@ impl MacOSWindowConfig {
         self
     }
 
-    /// Make the window content [use the full size of the window, including the title bar area](https://developer.apple.com/documentation/appkit/nswindow/stylemask/1644646-fullsizecontentview).
+    /// Make the window content [use the full size of the window, including the
+    /// [title bar area](https://developer.apple.com/documentation/appkit/nswindow/stylemask/1644646-fullsizecontentview).
     pub fn full_size_content_view(mut self, val: bool) -> Self {
         self.full_size_content_view = Some(val);
         self
@@ -411,7 +414,7 @@ pub enum MacOsOptionAsAlt {
     None,
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", feature = "winit", not(feature = "baseview")))]
 impl From<MacOsOptionAsAlt> for winit::platform::macos::OptionAsAlt {
     fn from(opts: MacOsOptionAsAlt) -> winit::platform::macos::OptionAsAlt {
         match opts {

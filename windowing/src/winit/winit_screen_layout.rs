@@ -1,7 +1,7 @@
 use crate::{
-    public_api::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier},
     internal_api::{WindowingBackend as _, WindowingSystem},
     private::window_tracking::with_window_id_and_window,
+    public_api::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier},
     winit::window_geometry::{monitor_bounds_for_monitor, rect_from_physical_bounds_for_window},
 };
 
