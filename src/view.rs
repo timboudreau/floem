@@ -20,7 +20,7 @@
 //! Then, we use a function to construct the slider. As part of this function we create an effect that will be re-run every time the signals in the  `percent` closure change.
 //! In the effect we send the change to the associated [`Id`]. This change can then be handled in the [`Widget::update`] method.
 //! ```rust
-//! use floem::ViewId;
+//! use floem::{ViewId, ViewIdentifier};
 //! use floem::reactive::*;
 //!
 //! struct Slider {
@@ -215,7 +215,7 @@ pub fn recursively_layout_view(id: ViewId, cx: &mut LayoutCx) -> NodeId {
 /// Then, we use a function to construct the slider. As part of this function we create an effect that will be re-run every time the signals in the  `percent` closure change.
 /// In the effect we send the change to the associated [`ViewId`](crate::ViewId). This change can then be handled in the [`View::update`](crate::View::update) method.
 /// ```rust
-/// # use floem::{*, views::*, reactive::*};
+/// # use floem::{*, views::*, reactive::*, ViewIdentifier};
 ///
 /// struct Slider {
 ///     id: ViewId,

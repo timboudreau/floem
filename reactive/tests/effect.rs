@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::{cell::Cell, rc::Rc};
 
 use floem_reactive::{
@@ -127,6 +129,7 @@ fn pending_effects_are_deduped() {
     assert_eq!(counter.get(), 2);
 }
 
+#[allow(dead_code)]
 fn assert_send_sync<T: Send + Sync>() {}
 
 #[test]

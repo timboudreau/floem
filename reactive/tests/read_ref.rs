@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use floem_reactive::{create_rw_signal, SignalRead};
 
 #[test]

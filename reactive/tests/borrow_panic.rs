@@ -1,4 +1,5 @@
 #![cfg(debug_assertions)]
+#![allow(deprecated)]
 
 use floem_reactive::{create_rw_signal, SignalRead, SignalWrite};
 
