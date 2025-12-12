@@ -1,6 +1,7 @@
 use adapters::WindowSystemTheme;
 use dpi::PhysicalPosition;
 use floem_renderer::gpu_resources::GpuResources;
+use muda::MenuId;
 use windowing::internal_api::{WindowingBackend, WindowingSystem};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
@@ -17,7 +18,7 @@ use web_time::Instant;
 #[cfg(target_arch = "wasm32")]
 use wgpu::web_sys;
 
-use floem_reactive::SignalUpdate;
+use floem_reactive::{SignalUpdate, WriteSignal};
 use peniko::kurbo::{Point, Size};
 use std::{collections::HashMap, rc::Rc};
 use winit::{
@@ -27,12 +28,14 @@ use winit::{
     window::Theme,
 };
 
-use crate::app_config::AppConfig;
+use crate::{app_config::AppConfig, application::app_base::AppHandlerInternalAPI, window::{WindowCreation}};
+use super::app_base::AppHandlerImpl;
+
 use crate::{
     AppEvent, WindowIdentifier,
     action::{Timer, TimerToken},
     app_events::AppEventCallback,
-    app_events::{AppUpdateEvent, UserEvent},
+    app_events::UserEvent,
     context::PaintState,
     event::FileDragEvent::{self, DragDropped},
     ext_event::EXT_EVENT_HANDLER,
@@ -43,16 +46,21 @@ use crate::{
     windows::window_handle::WindowHandle,
 };
 
-pub(crate) struct ApplicationHandle {
+pub type ApplicationHandle = WinitApplicationHandle;
+
+pub(crate) struct WinitApplicationHandle {
     window_handles: HashMap<WindowIdentifier, WindowHandle>,
     timers: HashMap<TimerToken, Timer>,
     pub(crate) event_listener: Option<Box<AppEventCallback>>,
-    pub(crate) gpu_resources: Option<GpuResources>,
+    gpu_resources: Option<GpuResources>,
     pub(crate) config: AppConfig,
 }
 
-impl ApplicationHandle {
-    pub(crate) fn new(config: AppConfig) -> Self {
+impl AppHandlerInternalAPI for WinitApplicationHandle {
+    type WindowingSystemEventLoop = dyn ActiveEventLoop;
+    type WindowingSystemWindowEvent = WindowEvent;
+
+    fn new(config: AppConfig) -> Self {
         Self {
             window_handles: HashMap::new(),
             timers: HashMap::new(),
@@ -62,290 +70,7 @@ impl ApplicationHandle {
         }
     }
 
-    pub(crate) fn handle_user_event(&mut self, event_loop: &dyn ActiveEventLoop, event: UserEvent) {
-        match event {
-            UserEvent::AppUpdate => {
-                self.handle_update_event(event_loop);
-            }
-            UserEvent::Idle => {
-                self.idle();
-            }
-            UserEvent::QuitApp => {
-                event_loop.exit();
-            }
-            UserEvent::Reopen {
-                has_visible_windows,
-            } => {
-                if let Some(action) = self.event_listener.as_ref() {
-                    action(AppEvent::Reopen {
-                        has_visible_windows,
-                    });
-                }
-            }
-            UserEvent::GpuResourcesUpdate { window_id } => {
-                let handle = self.window_handles.get_mut(&window_id).unwrap();
-                if let PaintState::PendingGpuResources {
-                    window,
-                    rx,
-                    font_embolden,
-                    renderer,
-                } = &handle.paint_state
-                {
-                    let (gpu_resources, surface) = rx.recv().unwrap().unwrap();
-                    let renderer = crate::renderer::Renderer::new(
-                        window.clone(),
-                        gpu_resources.clone(),
-                        surface,
-                        renderer.scale(),
-                        renderer.size(),
-                        *font_embolden,
-                    );
-                    self.gpu_resources = Some(gpu_resources);
-                    handle.paint_state = PaintState::Initialized { renderer };
-                    handle.init_renderer(self.gpu_resources.clone());
-                } else {
-                    panic!("Sent a gpu resource update after it had already been initialized");
-                }
-            }
-        }
-    }
-
-    pub(crate) fn handle_update_event(&mut self, event_loop: &dyn ActiveEventLoop) {
-        let events = crate::app_events::retreive_app_update_events();
-
-        for event in events {
-            match event {
-                AppUpdateEvent::NewWindow { window_creation } => self.new_window(
-                    event_loop,
-                    window_creation.view_fn,
-                    self.config.global_theme_override.map(WindowSystemTheme::from),
-                    window_creation.config.unwrap_or_default(),
-                ),
-                AppUpdateEvent::CloseWindow { window_id } => {
-                    self.close_window(window_id, event_loop);
-                }
-                AppUpdateEvent::RequestTimer { timer } => {
-                    self.request_timer(timer, event_loop);
-                }
-                AppUpdateEvent::CancelTimer { timer } => {
-                    self.remove_timer(&timer, event_loop);
-                }
-                AppUpdateEvent::CaptureWindow { window_id, capture } => {
-                    capture.set(self.capture_window(window_id).map(Rc::new));
-                }
-                AppUpdateEvent::ProfileWindow {
-                    window_id,
-                    end_profile,
-                } => {
-                    let handle = self.window_handles.get_mut(&window_id);
-                    if let Some(handle) = handle {
-                        if let Some(profile) = end_profile {
-                            profile.set(handle.profile.take().map(|mut profile| {
-                                profile.next_frame();
-                                Rc::new(profile)
-                            }));
-                        } else {
-                            handle.profile = Some(Profile::default());
-                        }
-                    }
-                }
-                AppUpdateEvent::MenuAction { action_id } => {
-                    for (_, handle) in self.window_handles.iter_mut() {
-                        if handle.window_state.context_menu.contains_key(&action_id)
-                            || handle.window_menu_actions.contains_key(&action_id)
-                        {
-                            handle.menu_action(&action_id);
-                            break;
-                        }
-                    }
-                }
-                AppUpdateEvent::ThemeChanged { theme } => {
-                    self.config.global_theme_override = Some(theme);
-                    for window_handle in self.window_handles.values_mut() {
-                        window_handle.window_state.light_dark_theme = theme;
-                        window_handle.set_theme(Some(theme), false);
-                    }
-                }
-            }
-        }
-    }
-
-    pub(crate) fn handle_window_event(
-        &mut self,
-        window_id: WindowIdentifier,
-        event: WindowEvent,
-        event_loop: &dyn ActiveEventLoop,
-    ) {
-        let window_handle = match self.window_handles.get_mut(&window_id) {
-            Some(window_handle) => window_handle,
-            None => return,
-        };
-
-        let start = window_handle.profile.is_some().then(|| {
-            let name = match event {
-                WindowEvent::ActivationTokenDone { .. } => "ActivationTokenDone",
-                WindowEvent::SurfaceResized(..) => "Resized",
-                WindowEvent::Moved(..) => "Moved",
-                WindowEvent::CloseRequested => "CloseRequested",
-                WindowEvent::Destroyed => "Destroyed",
-                WindowEvent::Focused(..) => "Focused",
-                WindowEvent::KeyboardInput { .. } => "KeyboardInput",
-                WindowEvent::ModifiersChanged(..) => "ModifiersChanged",
-                WindowEvent::Ime(..) => "Ime",
-                WindowEvent::PointerMoved { .. } => "PointerMoved",
-                WindowEvent::PointerEntered { .. } => "PointerEntered",
-                WindowEvent::PointerLeft { .. } => "PointerLeft",
-                WindowEvent::MouseWheel { .. } => "MouseWheel",
-                WindowEvent::PointerButton { .. } => "PointerButton",
-                WindowEvent::TouchpadPressure { .. } => "TouchpadPressure",
-                WindowEvent::ScaleFactorChanged { .. } => "ScaleFactorChanged",
-                WindowEvent::ThemeChanged(..) => "ThemeChanged",
-                WindowEvent::Occluded(..) => "Occluded",
-                WindowEvent::RedrawRequested => "RedrawRequested",
-                WindowEvent::PinchGesture { .. } => "PinchGesture",
-                WindowEvent::PanGesture { .. } => "PanGesture",
-                WindowEvent::DoubleTapGesture { .. } => "DoubleTapGesture",
-                WindowEvent::RotationGesture { .. } => "RotationGesture",
-                WindowEvent::DragDropped { .. } => "DroppedFile",
-                WindowEvent::DragEntered { .. } => "DragEntered",
-                WindowEvent::DragLeft { .. } => "DragLeft",
-                WindowEvent::DragMoved { .. } => "DragMoved",
-            };
-            (
-                name,
-                Instant::now(),
-                matches!(event, WindowEvent::RedrawRequested),
-            )
-        });
-
-        match window_handle
-            .event_reducer
-            .reduce(window_handle.scale, &event)
-        {
-            Some(WindowEventTranslation::Keyboard(ke)) => {
-                if let WindowEvent::KeyboardInput { is_synthetic, .. } = event {
-                    if !is_synthetic {
-                        window_handle.key_event(ke)
-                    }
-                }
-            }
-            Some(WindowEventTranslation::Pointer(pe)) => {
-                window_handle.pointer_event(pe);
-            }
-            None => {}
-        }
-
-        match event {
-            WindowEvent::ActivationTokenDone { .. } => {}
-            WindowEvent::SurfaceResized(size) => {
-                let size: LogicalSize<f64> = size.to_logical(window_handle.scale);
-                let size = Size::new(size.width, size.height);
-                window_handle.size(size);
-            }
-            WindowEvent::Moved(position) => {
-                let position: LogicalPosition<f64> = position.to_logical(window_handle.scale);
-                let point = Point::new(position.x, position.y);
-                window_handle.position(point);
-            }
-            WindowEvent::CloseRequested => {
-                self.close_window(window_id, event_loop);
-            }
-            WindowEvent::Destroyed => {
-                self.close_window(window_id, event_loop);
-            }
-            WindowEvent::DragDropped { paths, position } => {
-                window_handle.file_drag_event(DragDropped {
-                    paths,
-                    position: PhysicalPosition::new(position.x, position.y),
-                    scale_factor: window_handle.scale,
-                });
-            }
-            WindowEvent::DragEntered { paths, position } => {
-                window_handle.file_drag_event(FileDragEvent::DragEntered {
-                    paths,
-                    position: PhysicalPosition::new(position.x, position.y),
-                    scale_factor: window_handle.scale,
-                });
-            }
-            WindowEvent::DragMoved { position } => {
-                window_handle.file_drag_event(FileDragEvent::DragMoved {
-                    position: PhysicalPosition::new(position.x, position.y),
-                    scale_factor: window_handle.scale,
-                });
-            }
-            WindowEvent::DragLeft { position } => {
-                let pos = position.map(|p| PhysicalPosition::new(p.x, p.y));
-                window_handle.file_drag_event(FileDragEvent::DragLeft {
-                    position: pos,
-                    scale_factor: window_handle.scale,
-                });
-            }
-            WindowEvent::Focused(focused) => {
-                window_handle.focused(focused);
-            }
-            WindowEvent::KeyboardInput { .. } => {
-                // already handled by the ui-events reducer
-            }
-            WindowEvent::ModifiersChanged(modifiers) => {
-                window_handle.modifiers_changed(
-                    ui_events_winit::keyboard::from_winit_modifier_state(modifiers.state()),
-                );
-            }
-            WindowEvent::Ime(ime) => {
-                window_handle.ime(ime);
-            }
-            WindowEvent::MouseWheel { .. } => {}
-            WindowEvent::PinchGesture {
-                delta: _, phase: _, ..
-            } => {}
-            WindowEvent::TouchpadPressure { .. } => {}
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                window_handle.scale(scale_factor);
-            }
-            WindowEvent::ThemeChanged(theme) => {
-                window_handle.set_theme(Some(theme.into()), true);
-            }
-            WindowEvent::Occluded(_) => {}
-            WindowEvent::RedrawRequested => {
-                window_handle.render_frame(self.gpu_resources.clone());
-            }
-            WindowEvent::PanGesture { .. } => {}
-            WindowEvent::DoubleTapGesture { .. } => {}
-            WindowEvent::RotationGesture { .. } => {}
-            WindowEvent::PointerMoved { .. } => {
-                //already handled by the ui-events reducer
-            }
-            WindowEvent::PointerEntered { .. } => {
-                //already handled by the ui-events reducer
-            }
-            WindowEvent::PointerLeft { .. } => {
-                //already handled by the ui-events reducer
-            }
-            WindowEvent::PointerButton { .. } => {
-                //already handled by the ui-events reducer
-            }
-        }
-
-        if let Some((name, start, new_frame)) = start {
-            let end = Instant::now();
-
-            if let Some(window_handle) = self.window_handles.get_mut(&window_id) {
-                let profile = window_handle.profile.as_mut().unwrap();
-
-                profile
-                    .current
-                    .events
-                    .push(ProfileEvent { start, end, name });
-
-                if new_frame {
-                    profile.next_frame();
-                }
-            }
-        }
-        self.handle_updates_for_all_windows();
-    }
-
-    pub(crate) fn new_window(
+    fn new_window(
         &mut self,
         event_loop: &dyn ActiveEventLoop,
         view_fn: Box<dyn FnOnce(WindowIdentifier) -> Box<dyn View>>,
@@ -539,7 +264,7 @@ impl ApplicationHandle {
                     use raw_window_handle::RawWindowHandle;
 
                     if let RawWindowHandle::AppKit(app_kit) = wh.as_raw() {
-                        let _ = setup_traffic_light_constraints_all_pixels(&app_kit, x, y, 6.);
+                        let _ = super::macos::setup_traffic_light_constraints_all_pixels(&app_kit, x, y, 6.);
                     }
                 }
             }
@@ -557,6 +282,276 @@ impl ApplicationHandle {
         self.window_handles.insert(window_id.into(), window_handle);
     }
 
+    fn handle_user_event(&mut self, event_loop: &Self::WindowingSystemEventLoop, event: UserEvent) {
+        self.internal_handle_user_event(event_loop, event);
+    }
+
+    fn idle(&mut self) {
+        let ext_events = { std::mem::take(&mut *EXT_EVENT_HANDLER.queue.lock()) };
+
+        for trigger in ext_events {
+            trigger.notify();
+        }
+
+        self.handle_updates_for_all_windows();
+    }
+
+    fn handle_updates_for_all_windows(&mut self) {
+        for (window_id, handle) in self.window_handles.iter_mut() {
+            handle.process_update();
+            while WindowingSystem::process_window_updates(window_id) {}
+        }
+    }
+
+    fn handle_timer(&mut self, event_loop: &dyn ActiveEventLoop) {
+        let now = Instant::now();
+        let tokens: Vec<TimerToken> = self
+            .timers
+            .iter()
+            .filter_map(|(token, timer)| {
+                if timer.deadline <= now {
+                    Some(*token)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !tokens.is_empty() {
+            for token in tokens {
+                if let Some(timer) = self.timers.remove(&token) {
+                    (timer.action)(token);
+                }
+            }
+            self.handle_updates_for_all_windows();
+        }
+        self.fire_timer(event_loop);
+    }
+
+    fn handle_window_event(
+        &mut self,
+        window_id: WindowIdentifier,
+        event: WindowEvent,
+        event_loop: &dyn ActiveEventLoop,
+    ) {
+        let window_handle = match self.window_handles.get_mut(&window_id) {
+            Some(window_handle) => window_handle,
+            None => return,
+        };
+
+        let start = window_handle.profile.is_some().then(|| {
+            let name = match event {
+                WindowEvent::ActivationTokenDone { .. } => "ActivationTokenDone",
+                WindowEvent::SurfaceResized(..) => "Resized",
+                WindowEvent::Moved(..) => "Moved",
+                WindowEvent::CloseRequested => "CloseRequested",
+                WindowEvent::Destroyed => "Destroyed",
+                WindowEvent::Focused(..) => "Focused",
+                WindowEvent::KeyboardInput { .. } => "KeyboardInput",
+                WindowEvent::ModifiersChanged(..) => "ModifiersChanged",
+                WindowEvent::Ime(..) => "Ime",
+                WindowEvent::PointerMoved { .. } => "PointerMoved",
+                WindowEvent::PointerEntered { .. } => "PointerEntered",
+                WindowEvent::PointerLeft { .. } => "PointerLeft",
+                WindowEvent::MouseWheel { .. } => "MouseWheel",
+                WindowEvent::PointerButton { .. } => "PointerButton",
+                WindowEvent::TouchpadPressure { .. } => "TouchpadPressure",
+                WindowEvent::ScaleFactorChanged { .. } => "ScaleFactorChanged",
+                WindowEvent::ThemeChanged(..) => "ThemeChanged",
+                WindowEvent::Occluded(..) => "Occluded",
+                WindowEvent::RedrawRequested => "RedrawRequested",
+                WindowEvent::PinchGesture { .. } => "PinchGesture",
+                WindowEvent::PanGesture { .. } => "PanGesture",
+                WindowEvent::DoubleTapGesture { .. } => "DoubleTapGesture",
+                WindowEvent::RotationGesture { .. } => "RotationGesture",
+                WindowEvent::DragDropped { .. } => "DroppedFile",
+                WindowEvent::DragEntered { .. } => "DragEntered",
+                WindowEvent::DragLeft { .. } => "DragLeft",
+                WindowEvent::DragMoved { .. } => "DragMoved",
+            };
+            (
+                name,
+                Instant::now(),
+                matches!(event, WindowEvent::RedrawRequested),
+            )
+        });
+
+        match window_handle
+            .event_reducer
+            .reduce(window_handle.scale, &event)
+        {
+            Some(WindowEventTranslation::Keyboard(ke)) => {
+                if let WindowEvent::KeyboardInput { is_synthetic, .. } = event {
+                    if !is_synthetic {
+                        window_handle.key_event(ke)
+                    }
+                }
+            }
+            Some(WindowEventTranslation::Pointer(pe)) => {
+                window_handle.pointer_event(pe);
+            }
+            None => {}
+        }
+
+        match event {
+            WindowEvent::ActivationTokenDone { .. } => {}
+            WindowEvent::SurfaceResized(size) => {
+                let size: LogicalSize<f64> = size.to_logical(window_handle.scale);
+                let size = Size::new(size.width, size.height);
+                window_handle.size(size);
+            }
+            WindowEvent::Moved(position) => {
+                let position: LogicalPosition<f64> = position.to_logical(window_handle.scale);
+                let point = Point::new(position.x, position.y);
+                window_handle.position(point);
+            }
+            WindowEvent::CloseRequested => {
+                self.close_window(window_id, event_loop);
+            }
+            WindowEvent::Destroyed => {
+                self.close_window(window_id, event_loop);
+            }
+            WindowEvent::DragDropped { paths, position } => {
+                window_handle.file_drag_event(DragDropped {
+                    paths,
+                    position: PhysicalPosition::new(position.x, position.y),
+                    scale_factor: window_handle.scale,
+                });
+            }
+            WindowEvent::DragEntered { paths, position } => {
+                window_handle.file_drag_event(FileDragEvent::DragEntered {
+                    paths,
+                    position: PhysicalPosition::new(position.x, position.y),
+                    scale_factor: window_handle.scale,
+                });
+            }
+            WindowEvent::DragMoved { position } => {
+                window_handle.file_drag_event(FileDragEvent::DragMoved {
+                    position: PhysicalPosition::new(position.x, position.y),
+                    scale_factor: window_handle.scale,
+                });
+            }
+            WindowEvent::DragLeft { position } => {
+                let pos = position.map(|p| PhysicalPosition::new(p.x, p.y));
+                window_handle.file_drag_event(FileDragEvent::DragLeft {
+                    position: pos,
+                    scale_factor: window_handle.scale,
+                });
+            }
+            WindowEvent::Focused(focused) => {
+                window_handle.focused(focused);
+            }
+            WindowEvent::KeyboardInput { .. } => {
+                // already handled by the ui-events reducer
+            }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                window_handle.modifiers_changed(
+                    ui_events_winit::keyboard::from_winit_modifier_state(modifiers.state()),
+                );
+            }
+            WindowEvent::Ime(ime) => {
+                window_handle.ime(ime);
+            }
+            WindowEvent::MouseWheel { .. } => {}
+            WindowEvent::PinchGesture {
+                delta: _, phase: _, ..
+            } => {}
+            WindowEvent::TouchpadPressure { .. } => {}
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                window_handle.scale(scale_factor);
+            }
+            WindowEvent::ThemeChanged(theme) => {
+                window_handle.set_theme(Some(theme.into()), true);
+            }
+            WindowEvent::Occluded(_) => {}
+            WindowEvent::RedrawRequested => {
+                window_handle.render_frame(self.gpu_resources.clone());
+            }
+            WindowEvent::PanGesture { .. } => {}
+            WindowEvent::DoubleTapGesture { .. } => {}
+            WindowEvent::RotationGesture { .. } => {}
+            WindowEvent::PointerMoved { .. } => {
+                //already handled by the ui-events reducer
+            }
+            WindowEvent::PointerEntered { .. } => {
+                //already handled by the ui-events reducer
+            }
+            WindowEvent::PointerLeft { .. } => {
+                //already handled by the ui-events reducer
+            }
+            WindowEvent::PointerButton { .. } => {
+                //already handled by the ui-events reducer
+            }
+        }
+
+        if let Some((name, start, new_frame)) = start {
+            let end = Instant::now();
+
+            if let Some(window_handle) = self.window_handle_for_window_id(&window_id) {
+                let profile = window_handle.profile.as_mut().unwrap();
+
+                profile
+                    .current
+                    .events
+                    .push(ProfileEvent { start, end, name });
+
+                if new_frame {
+                    profile.next_frame();
+                }
+            }
+        }
+        self.handle_updates_for_all_windows();
+    }
+
+    fn window_handle_for_window_id(&mut self, window_id : &WindowIdentifier) -> Option<&mut WindowHandle> {
+        self.window_handles.get_mut(window_id)
+    }
+}
+
+impl super::app_base::AppHandlerImpl for WinitApplicationHandle {
+
+
+    fn handle_profile(&mut self, window_id: WindowIdentifier, end_profile: Option<WriteSignal<Option<Rc<Profile>>>>) {
+        let handle = self.window_handles.get_mut(&window_id);
+        if let Some(handle) = handle {
+            if let Some(profile) = end_profile {
+                profile.set(handle.profile.take().map(|mut profile| {
+                    profile.next_frame();
+                    Rc::new(profile)
+                }));
+            } else {
+                handle.profile = Some(Profile::default());
+            }
+        }
+    }
+
+    fn handle_window_creation(&mut self, creation: WindowCreation, event_loop: &dyn ActiveEventLoop) {
+        self.new_window(
+            event_loop,
+            creation.view_fn,
+            self.config.global_theme_override.map(WindowSystemTheme::from),
+            creation.config.unwrap_or_default(),
+        )
+    }
+
+    fn handle_theme_change(&mut self, theme : WindowSystemTheme) {
+        self.config.global_theme_override = Some(theme);
+        for window_handle in self.window_handles.values_mut() {
+            window_handle.window_state.light_dark_theme = theme;
+            window_handle.set_theme(Some(theme), false);
+        }
+    }
+
+    fn handle_menu_action(&mut self, action_id : MenuId) {
+        for (_, handle) in self.window_handles.iter_mut() {
+            if handle.window_state.context_menu.contains_key(&action_id)
+                || handle.window_menu_actions.contains_key(&action_id)
+            {
+                handle.menu_action(&action_id);
+                break;
+            }
+        }
+    }
+
     fn close_window(&mut self, window_id: WindowIdentifier, event_loop: &dyn ActiveEventLoop) {
         if let Some(handle) = self.window_handles.get_mut(&window_id) {
             handle.destroy();
@@ -571,23 +566,6 @@ impl ApplicationHandle {
         self.window_handles
             .get_mut(&window_id)
             .map(|handle| handle.capture(self.gpu_resources.clone()))
-    }
-
-    pub(crate) fn idle(&mut self) {
-        let ext_events = { std::mem::take(&mut *EXT_EVENT_HANDLER.queue.lock()) };
-
-        for trigger in ext_events {
-            trigger.notify();
-        }
-
-        self.handle_updates_for_all_windows();
-    }
-
-    pub(crate) fn handle_updates_for_all_windows(&mut self) {
-        for (window_id, handle) in self.window_handles.iter_mut() {
-            handle.process_update();
-            while WindowingSystem::process_window_updates(window_id) {}
-        }
     }
 
     fn request_timer(&mut self, timer: Timer, event_loop: &dyn ActiveEventLoop) {
@@ -614,163 +592,40 @@ impl ApplicationHandle {
         }
     }
 
-    pub(crate) fn handle_timer(&mut self, event_loop: &dyn ActiveEventLoop) {
-        let now = Instant::now();
-        let tokens: Vec<TimerToken> = self
-            .timers
-            .iter()
-            .filter_map(|(token, timer)| {
-                if timer.deadline <= now {
-                    Some(*token)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if !tokens.is_empty() {
-            for token in tokens {
-                if let Some(timer) = self.timers.remove(&token) {
-                    (timer.action)(token);
-                }
-            }
-            self.handle_updates_for_all_windows();
-        }
-        self.fire_timer(event_loop);
-    }
-}
-
-/// Sets up traffic light button constraints with precise pixel positioning.
-///
-/// # Parameters
-/// - `leading_pixels`: Distance from left edge of title bar to close button
-///   (typically 10.0 for standard macOS positioning)
-/// - `top_pixels`: Distance from top edge of title bar to **top edge** of
-///   buttons
-/// - `button_spacing_pixels`: Spacing between traffic light buttons (typically
-///   6.0 for native macOS appearance)
-///
-/// # Calculating `top_pixels` for vertical centering
-/// Traffic light buttons are typically 13pt tall, so to center them:
-/// `top_pixels = (top_bar_height - 13.0) / 2.0`
-///
-/// # Example for centering in a 30pt top bar
-/// ```rust,ignore
-/// // Standard horizontal position (10pt), centered vertically (8.5pt from top), standard spacing (6pt)
-/// setup_traffic_light_constraints_all_pixels(view_handle, 10.0, 8.5, 6.0)?;
-/// ```
-///
-/// # Common values
-/// - Standard positioning: `(10.0, 8.0, 6.0)`
-/// - Centered in 30pt bar: `(10.0, 8.5, 6.0)`
-/// - Centered in 40pt bar: `(10.0, 13.5, 6.0)`
-/// - Centered in 50pt bar: `(10.0, 18.5, 6.0)`
-#[cfg(target_os = "macos")]
-fn setup_traffic_light_constraints_all_pixels(
-    view_handle: &raw_window_handle::AppKitWindowHandle,
-    leading_pixels: f64,
-    top_pixels: f64,
-    button_spacing_pixels: f64,
-) -> std::result::Result<(), Box<dyn std::error::Error>> {
-    use {
-        objc2_app_kit::{NSLayoutAttribute, NSLayoutConstraint, NSLayoutRelation, NSWindowButton},
-        objc2_foundation::NSArray,
-    };
-
-    let ns_view = view_handle.ns_view.cast::<objc2_app_kit::NSView>();
-    let ns_view = unsafe { &*ns_view.as_ptr() };
-    let window = ns_view
-        .window()
-        .ok_or("View must be attached to a window")?;
-
-    let close_button = window.standardWindowButton(NSWindowButton::CloseButton);
-    let miniaturize_button = window.standardWindowButton(NSWindowButton::MiniaturizeButton);
-    let zoom_button = window.standardWindowButton(NSWindowButton::ZoomButton);
-    let title_bar_view = close_button
-        .as_ref()
-        .and_then(|button| unsafe { button.superview() })
-        .ok_or("Could not find title bar container view")?;
-
-    unsafe {
-        // Set up close button with exact pixel positioning
-        if let Some(close_btn) = &close_button {
-            close_btn.setTranslatesAutoresizingMaskIntoConstraints(false);
-
-            let leading = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                close_btn,
-                NSLayoutAttribute::Leading,
-                NSLayoutRelation::Equal,
-                Some(&title_bar_view),
-                NSLayoutAttribute::Leading,
-                1.0,
-                leading_pixels,
+    fn handle_gpu_resource_update(&mut self, window_id : WindowIdentifier) {
+        let handle = self.window_handles.get_mut(&window_id).unwrap();
+        if let PaintState::PendingGpuResources {
+            window,
+            rx,
+            font_embolden,
+            renderer,
+        } = &handle.paint_state
+        {
+            let (gpu_resources, surface) = rx.recv().unwrap().unwrap();
+            let renderer = crate::renderer::Renderer::new(
+                window.clone(),
+                gpu_resources.clone(),
+                surface,
+                renderer.scale(),
+                renderer.size(),
+                *font_embolden,
             );
-
-            let top = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                close_btn,
-                NSLayoutAttribute::Top,
-                NSLayoutRelation::Equal,
-                Some(&title_bar_view),
-                NSLayoutAttribute::Top,
-                1.0,
-                top_pixels,
-            );
-
-            title_bar_view.addConstraints(&NSArray::from_slice(&[&*leading, &*top]));
-        }
-
-        // Set up other buttons with custom spacing
-        if let (Some(mini_btn), Some(close_btn)) = (&miniaturize_button, &close_button) {
-            mini_btn.setTranslatesAutoresizingMaskIntoConstraints(false);
-
-            let leading = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                mini_btn,
-                NSLayoutAttribute::Leading,
-                NSLayoutRelation::Equal,
-                Some(close_btn),
-                NSLayoutAttribute::Trailing,
-                1.0,
-                button_spacing_pixels,
-            );
-
-            let center_y = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                mini_btn,
-                NSLayoutAttribute::CenterY,
-                NSLayoutRelation::Equal,
-                Some(close_btn),
-                NSLayoutAttribute::CenterY,
-                1.0,
-                0.0,
-            );
-
-            title_bar_view.addConstraints(&NSArray::from_slice(&[&*leading, &*center_y]));
-        }
-
-        if let (Some(zoom_btn), Some(mini_btn)) = (&zoom_button, &miniaturize_button) {
-            zoom_btn.setTranslatesAutoresizingMaskIntoConstraints(false);
-
-            let leading = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                zoom_btn,
-                NSLayoutAttribute::Leading,
-                NSLayoutRelation::Equal,
-                Some(mini_btn),
-                NSLayoutAttribute::Trailing,
-                1.0,
-                button_spacing_pixels,
-            );
-
-            let center_y = NSLayoutConstraint::constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant(
-                zoom_btn,
-                NSLayoutAttribute::CenterY,
-                NSLayoutRelation::Equal,
-                Some(mini_btn),
-                NSLayoutAttribute::CenterY,
-                1.0,
-                0.0,
-            );
-
-            title_bar_view.addConstraints(&NSArray::from_slice(&[&*leading, &*center_y]));
+            self.gpu_resources = Some(gpu_resources);
+            handle.paint_state = PaintState::Initialized { renderer };
+            handle.init_renderer(self.gpu_resources.clone());
+        } else {
+            panic!("Sent a gpu resource update after it had already been initialized");
         }
     }
 
-    Ok(())
+    fn handle_exit(&mut self, event_loop: &dyn ActiveEventLoop) {
+        event_loop.exit();
+    }
+
+    fn publish_event(&mut self, event : AppEvent) {
+        if let Some(action) = self.event_listener.as_ref() {
+            action(event);
+        }
+    }
+
 }

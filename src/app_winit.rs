@@ -5,7 +5,7 @@ use floem_reactive::Runtime;
 use parking_lot::Mutex;
 use raw_window_handle::HasDisplayHandle;
 use winit::{application::ApplicationHandler, event::WindowEvent, event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy}, window::WindowId};
-use crate::{app::Application, app_events::UserEvent, application::app_handle::ApplicationHandle, AppConfig, AppEvent, Clipboard};
+use crate::{app::Application, app_events::UserEvent, application::{app_handle::ApplicationHandle, app_base::AppHandlerInternalAPI}, AppConfig, AppEvent, Clipboard};
 
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{unbounded as channel};
