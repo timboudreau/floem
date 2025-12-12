@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::{cell::RefCell, mem, rc::Rc, sync::Arc};
 
-use adapters::WindowSystemTheme;
+use adapters::{WindowResizeDirection, WindowSystemTheme};
 use muda::MenuId;
 use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
 #[cfg(not(target_arch = "wasm32"))]
@@ -961,7 +961,13 @@ impl WindowHandle {
                         self.window.focus_window();
                     }
                     UpdateMessage::DragResizeWindow(direction) => {
-                        let _ = self.window.drag_resize_window(direction);
+                        // If this message came from a native windowing event, and the windowing system
+                        // is baseview, there is no concept of window resize directions there.
+                        if let Some(direction) = direction {
+                            let _ = self.window.drag_resize_window(direction.into());
+                        } else {
+                            let _ = self.window.drag_resize_window(WindowResizeDirection::default().into());
+                        }
                     }
                     UpdateMessage::ToggleWindowMaximized => {
                         self.window.set_maximized(!self.window.is_maximized());

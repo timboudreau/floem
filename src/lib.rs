@@ -212,11 +212,7 @@ pub(crate) mod view_state;
 pub(crate) mod view_storage;
 pub mod view_tuple;
 pub mod views;
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub mod window;
-
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-pub mod window_baseview;
 
 mod window_handle;
 mod window_id;
@@ -234,6 +230,8 @@ pub mod receiver_signal {
     pub use resource::*;
     pub use stream_signal::*;
 }
+
+mod config;
 
 pub use crate::{app::{Application, launch, quit_app, reopen}, app_config::AppConfig, app_events::AppEvent};
 pub use adapters::*;

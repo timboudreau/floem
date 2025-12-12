@@ -8,12 +8,9 @@
 
 use std::sync::atomic::AtomicU64;
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-use adapters::WindowSystemTheme;
+use adapters::{WindowResizeDirection, WindowSystemTheme};
 use floem_reactive::{SignalWith, UpdaterEffect};
 use peniko::kurbo::{Point, Size, Vec2};
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-use winit::window::ResizeDirection;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
@@ -61,16 +58,9 @@ pub fn drag_window() {
     add_update_message(UpdateMessage::DragWindow);
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// If and while the mouse is pressed, allow the window to be resized.
-pub fn drag_resize_window(direction: ResizeDirection) {
-    add_update_message(UpdateMessage::DragResizeWindow(direction));
-}
-
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-/// If and while the mouse is pressed, allow the window to be resized.
-pub fn drag_resize_window() {
-    add_update_message(UpdateMessage::DragResizeWindow);
+pub fn drag_resize_window(direction: WindowResizeDirection) {
+    add_update_message(UpdateMessage::DragResizeWindow(Some(direction)));
 }
 
 /// Move the window by a specified delta.
@@ -97,15 +87,14 @@ pub fn set_global_theme(theme: impl Into<WindowSystemTheme>) {
     add_app_update_event(AppUpdateEvent::ThemeChanged { theme : theme.into() });
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-/// Set the **window** theme.
+/// Set the **window** theme - whether its colors match the OS's light or dark
+/// theme defaults.
 ///
 /// Specify `None` to reset the theme to the system default.
 pub fn set_theme(theme: Option<WindowSystemTheme>) {
     add_update_message(UpdateMessage::SetTheme(theme));
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **global** app theme.
 pub fn toggle_global_theme() {
     add_app_update_event(AppUpdateEvent::ThemeChanged {
@@ -113,13 +102,11 @@ pub fn toggle_global_theme() {
     });
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Toggle **window** theme.
 pub fn toggle_window_theme() {
     add_update_message(UpdateMessage::SetTheme(Some(current_theme().unwrap_or(WindowSystemTheme::Dark).opposite())));
 }
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 /// Get current window theme.
 pub fn current_theme() -> Option<WindowSystemTheme> {
     use windowing::internal_api::{WindowingBackend as _, WindowingSystem};

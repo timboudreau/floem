@@ -1,5 +1,4 @@
-use winit::window::ResizeDirection;
-
+use adapters::WindowResizeDirection;
 use crate::{
     action::drag_resize_window,
     event::EventListener,
@@ -28,7 +27,7 @@ pub struct DragResizeWindowArea {
 /// - **macOS:** Not supported.
 /// - **iOS / Android / Web / Orbital:** Not supported.
 pub fn drag_resize_window_area<V: IntoView + 'static>(
-    direction: ResizeDirection,
+    direction: WindowResizeDirection,
     child: V,
 ) -> DragResizeWindowArea {
     let id = ViewId::new();
@@ -39,14 +38,14 @@ pub fn drag_resize_window_area<V: IntoView + 'static>(
         })
         .style(move |s| {
             let cursor = match direction {
-                ResizeDirection::East => CursorStyle::ColResize,
-                ResizeDirection::West => CursorStyle::ColResize,
-                ResizeDirection::North => CursorStyle::RowResize,
-                ResizeDirection::South => CursorStyle::RowResize,
-                ResizeDirection::NorthEast => CursorStyle::NeswResize,
-                ResizeDirection::SouthWest => CursorStyle::NeswResize,
-                ResizeDirection::SouthEast => CursorStyle::NwseResize,
-                ResizeDirection::NorthWest => CursorStyle::NwseResize,
+                WindowResizeDirection::East => CursorStyle::ColResize,
+                WindowResizeDirection::West => CursorStyle::ColResize,
+                WindowResizeDirection::North => CursorStyle::RowResize,
+                WindowResizeDirection::South => CursorStyle::RowResize,
+                WindowResizeDirection::NorthEast => CursorStyle::NeswResize,
+                WindowResizeDirection::SouthWest => CursorStyle::NeswResize,
+                WindowResizeDirection::SouthEast => CursorStyle::NwseResize,
+                WindowResizeDirection::NorthWest => CursorStyle::NwseResize,
             };
             s.cursor(cursor)
         })
