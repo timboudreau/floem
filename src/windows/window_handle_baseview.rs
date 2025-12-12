@@ -2,7 +2,7 @@ use adapters::{WindowResizeDirection, WindowSystemTheme};
 use peniko::kurbo::{Point, Size, Vec2};
 use raw_window_handle::RawWindowHandle;
 use windowing::public_api::NativeWindow;
-use crate::window_handle::WindowHandle;
+use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
 
 impl WindowHandleNative for WindowHandle {
     fn set_cursor(&mut self) {

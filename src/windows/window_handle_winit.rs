@@ -4,7 +4,8 @@ use windowing::public_api::NativeWindow;
 use winit::{cursor::CursorIcon,
     dpi::{LogicalPosition, LogicalSize},
     window::{ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData}};
-use crate::{style::CursorStyle, window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
+use crate::style::CursorStyle;
+use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 impl WindowHandleNative for WindowHandle {

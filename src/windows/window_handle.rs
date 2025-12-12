@@ -31,7 +31,7 @@ use crate::reactive::SignalWith;
 use crate::unit::UnitExt;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::views::{Decorators, container, stack};
-use crate::window_handle_utils::WindowHandleNative;
+use super::window_handle_utils::WindowHandleNative;
 use crate::NativeWindow;
 use crate::{
     Application,

@@ -24,7 +24,7 @@ use crate::{
     update::{UPDATE_MESSAGES, UpdateMessage},
     view::View,
     views::Decorators,
-    window_handle::{get_current_view, set_current_view}
+    windows::window_handle::{get_current_view, set_current_view}
 };
 
 #[cfg(any(feature = "rfd-async-std", feature = "rfd-tokio"))]

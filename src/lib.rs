@@ -214,12 +214,7 @@ pub mod view_tuple;
 pub mod views;
 pub mod window;
 
-mod window_handle;
-mod window_handle_utils;
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
-mod window_handle_winit;
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-mod window_handle_baseview;
+mod windows;
 
 mod window_id;
 pub(crate) mod window_state;

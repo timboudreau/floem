@@ -8,7 +8,7 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use crate::{
     Application,
     app_events::UserEvent,
-    window_handle::{get_current_view, set_current_view},
+    windows::window_handle::{get_current_view, set_current_view},
 };
 
 #[cfg(feature = "crossbeam")]

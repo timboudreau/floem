@@ -40,7 +40,7 @@ use crate::{
     profiler::{Profile, ProfileEvent},
     view::View,
     window::WindowConfig,
-    window_handle::WindowHandle,
+    windows::window_handle::WindowHandle,
 };
 
 pub(crate) struct ApplicationHandle {
