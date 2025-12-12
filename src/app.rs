@@ -8,7 +8,7 @@ use crate::{app_events::UserEvent, AppConfig, AppEvent, WindowIdentifier};
 use floem_reactive::{Runtime};
 
 use crate::{
-    app_handle::ApplicationHandle,
+    application::app_handle::ApplicationHandle,
     view::IntoView,
     window::{WindowConfig, WindowCreation},
 };

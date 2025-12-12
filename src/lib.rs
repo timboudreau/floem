@@ -183,7 +183,7 @@ mod app_config;
 #[cfg(target_os = "macos")]
 mod app_delegate;
 mod app_events;
-mod app_handle;
+mod application;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 mod app_winit;
 #[cfg(feature = "vello")]
