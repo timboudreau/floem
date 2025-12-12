@@ -9,4 +9,5 @@ use winit::window::Window;
 pub use backend::*;
 pub use window_identifier::*;
 
-pub type NativeWindow = Arc<dyn Window>;
+pub type NativeWindowInner = dyn Window;
+pub type NativeWindow = Arc<NativeWindowInner>;

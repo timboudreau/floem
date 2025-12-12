@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::{cell::RefCell, mem, rc::Rc, sync::Arc};
-
-use adapters::{WindowResizeDirection, WindowSystemTheme};
+use adapters::WindowSystemTheme;
 use muda::MenuId;
 use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
+use windowing::public_api::NativeWindowInner;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 use ui_events::keyboard::{Key, KeyState, KeyboardEvent, Modifiers, NamedKey};
@@ -13,23 +13,16 @@ use ui_events_winit::WindowEventReducer;
 #[cfg(all(feature = "baseview", not(feature = "winit")))]
 use ui_events_baseview::WindowEventReducer;
 
-use winit::window::{
-    ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData,
-};
-
 use floem_reactive::{RwSignal, Scope, SignalGet, SignalUpdate};
 use floem_renderer::Renderer;
 use floem_renderer::gpu_resources::GpuResources;
 use peniko::color::palette;
 use peniko::kurbo::{Affine, Point, Size};
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::{
-    cursor::CursorIcon,
-    dpi::{LogicalPosition, LogicalSize},
     event::Ime,
 };
 
-use crate::id::ViewIdentifierInternal;
-use crate::{ViewIdentifier, WindowIdentifier};
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::menu::MudaMenu;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -38,6 +31,7 @@ use crate::reactive::SignalWith;
 use crate::unit::UnitExt;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::views::{Decorators, container, stack};
+use crate::window_handle_utils::WindowHandleNative;
 use crate::NativeWindow;
 use crate::{
     Application,
@@ -46,11 +40,12 @@ use crate::{
         ComputeLayoutCx, EventCx, FrameUpdate, LayoutCx, PaintCx, PaintState, StyleCx, UpdateCx,
     },
     event::{Event, EventListener},
+    id::ViewIdentifierInternal,
     ViewId,
     inspector::{self, Capture, CaptureState, CapturedView},
     nav::view_arrow_navigation,
     profiler::Profile,
-    style::{CursorStyle, Style, StyleSelector},
+    style::{Style, StyleSelector},
     theme::default_theme,
     update::{
         CENTRAL_DEFERRED_UPDATE_MESSAGES, CENTRAL_UPDATE_MESSAGES, CURRENT_RUNNING_VIEW_HANDLE,
@@ -59,8 +54,12 @@ use crate::{
     view::{IntoView, View, view_tab_navigation},
     view_state::ChangeFlags,
     window_state::WindowState,
+    ViewIdentifier,
+    WindowIdentifier
 };
 use event::FileDragEvent;
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "freebsd"))]
+use raw_window_handle::RawWindowHandle;
 
 /// The top-level window handle that owns the winit `Window`.
 /// Meant only for use with the root view of the application.
@@ -95,7 +94,7 @@ pub(crate) struct WindowHandle {
 
 impl WindowHandle {
     pub(crate) fn new(
-        window: Box<dyn winit::window::Window>,
+        window: Box<NativeWindowInner>,
         gpu_resources: Option<GpuResources>,
         required_features: wgpu::Features,
         view_fn: impl FnOnce(WindowIdentifier) -> Box<dyn View> + 'static,
@@ -107,8 +106,7 @@ impl WindowHandle {
         let window_id = window.id();
         let id = ViewId::new();
         let scale = window.scale_factor();
-        let size: LogicalSize<f64> = window.surface_size().to_logical(scale);
-        let size = Size::new(size.width, size.height);
+        let size = WindowingSystem::logical_surface_size(window.as_ref(), scale);
         let size = scope.create_rw_signal(Size::new(size.width, size.height));
         let os_theme = window.theme().map(WindowSystemTheme::from);
 
@@ -220,7 +218,7 @@ impl WindowHandle {
             .set_root_size(size.get_untracked());
 
         window_handle.window_state.light_dark_theme =
-            os_theme.unwrap_or(WindowSystemTheme::Light);
+            os_theme.unwrap_or_default();
 
         window_handle.event(Event::ThemeChanged(
             window_handle.window_state.light_dark_theme.into(),
@@ -230,27 +228,10 @@ impl WindowHandle {
     }
 
     pub(crate) fn init_renderer(&mut self, gpu_resources: Option<GpuResources>) {
-        // On the web, we need to get the canvas size once. The size will be updated automatically
-        // when the canvas element is resized subsequently. This is the correct place to do so
-        // because the renderer is not initialized until now.
-        #[cfg(target_arch = "wasm32")]
-        {
-            use winit::platform::web::WindowExtWeb;
-
-            let rect = self
-                .window
-                .as_ref()
-                .unwrap()
-                .canvas()
-                .unwrap()
-                .get_bounding_client_rect();
-            // let rect = canvas.get_bounding_client_rect();
-            let size = LogicalSize::new(rect.width(), rect.height());
-            self.size(Size::new(size.width, size.height));
-        }
+        self.init_renderer_wasm();
         // Now that the renderer is initialized, draw the first frame
         self.render_frame(gpu_resources);
-        self.window.set_visible(true);
+        self.set_window_visible(true);
     }
 
     pub fn event(&mut self, event: Event) {
@@ -517,7 +498,7 @@ impl WindowHandle {
             self.window_state.theme_overriden = false;
         }
         if !change_from_os {
-            self.window.set_theme(theme.map(WindowSystemTheme::into));
+            self.set_window_theme(theme);
         }
         self.id.request_all();
         request_recursive_changes(self.id, ChangeFlags::STYLE);
@@ -534,7 +515,7 @@ impl WindowHandle {
         self.paint_state.resize(scale, size * self.scale);
         self.window_state.set_root_size(size);
 
-        let is_maximized = self.window.is_maximized();
+        let is_maximized = self.is_window_maximized();
         if is_maximized != self.is_maximized {
             self.is_maximized = is_maximized;
             self.event(Event::WindowMaximizeChanged(is_maximized));
@@ -709,7 +690,8 @@ impl WindowHandle {
         }
         cx.paint_view(self.id);
         if cx.window_state.capture.is_none() {
-            self.window.pre_present_notify();
+            // if this is an instance method, the borrow checker will be unhappy
+            Self::window_pre_present_notify(&self.window);
         }
         cx.paint_state.renderer_mut().finish()
     }
@@ -955,35 +937,25 @@ impl WindowHandle {
                         view.borrow_mut().update(&mut cx, state);
                     }
                     UpdateMessage::DragWindow => {
-                        let _ = self.window.drag_window();
+                        self.drag_window();
                     }
                     UpdateMessage::FocusWindow => {
-                        self.window.focus_window();
+                        self.focus_window();
                     }
                     UpdateMessage::DragResizeWindow(direction) => {
-                        // If this message came from a native windowing event, and the windowing system
-                        // is baseview, there is no concept of window resize directions there.
-                        if let Some(direction) = direction {
-                            let _ = self.window.drag_resize_window(direction.into());
-                        } else {
-                            let _ = self.window.drag_resize_window(WindowResizeDirection::default().into());
-                        }
+                        self.drag_resize_window(direction)
                     }
                     UpdateMessage::ToggleWindowMaximized => {
-                        self.window.set_maximized(!self.window.is_maximized());
+                        self.set_window_maximized(!self.is_window_maximized());
                     }
                     UpdateMessage::SetWindowMaximized(maximized) => {
-                        self.window.set_maximized(maximized);
+                        self.set_window_maximized(maximized);
                     }
                     UpdateMessage::MinimizeWindow => {
-                        self.window.set_minimized(true);
+                        self.set_window_minimized(true);
                     }
                     UpdateMessage::SetWindowDelta(delta) => {
-                        let pos = self.window_position + delta;
-                        self.window
-                            .set_outer_position(winit::dpi::Position::Logical(
-                                winit::dpi::LogicalPosition::new(pos.x, pos.y),
-                            ));
+                        self.set_window_position(delta);
                     }
                     UpdateMessage::WindowScale(scale) => {
                         cx.window_state.scale = scale;
@@ -996,11 +968,7 @@ impl WindowHandle {
                         cx.window_state.context_menu.clear();
                         cx.window_state.update_context_menu(registry);
 
-                        #[cfg(any(target_os = "windows", target_os = "macos"))]
-                        {
-                            self.show_context_menu(menu, pos);
-                        }
-                        #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "freebsd"))]
                         self.show_context_menu(menu, pos);
                     }
                     UpdateMessage::WindowMenu { menu } => {
@@ -1018,55 +986,13 @@ impl WindowHandle {
                         self.window_menu = Some(menu);
                     }
                     UpdateMessage::SetWindowTitle { title } => {
-                        self.window.set_title(&title);
+                        self.set_window_title(&title);
                     }
                     UpdateMessage::SetImeAllowed { allowed } => {
-                        if self.window.ime_capabilities().is_some() != allowed {
-                            let ime = if allowed {
-                                let position = LogicalPosition::new(0, 0);
-                                let size = LogicalSize::new(0, 0);
-                                let request_data = ImeRequestData::default()
-                                    .with_cursor_area(position.into(), size.into())
-                                    .with_hint_and_purpose(ImeHint::NONE, ImePurpose::Normal);
-
-                                ImeRequest::Enable(
-                                    ImeEnableRequest::new(
-                                        ImeCapabilities::new()
-                                            .with_hint_and_purpose()
-                                            .with_cursor_area(),
-                                        request_data,
-                                    )
-                                    .unwrap(),
-                                )
-                            } else {
-                                ImeRequest::Disable
-                            };
-
-                            self.window.request_ime_update(ime).unwrap();
-                        }
+                        self.set_ime_allowed(allowed);
                     }
                     UpdateMessage::SetImeCursorArea { position, size } => {
-                        if self
-                            .window
-                            .ime_capabilities()
-                            .map(|caps| caps.cursor_area())
-                            .unwrap_or(false)
-                        {
-                            let position =
-                                winit::dpi::Position::Logical(winit::dpi::LogicalPosition::new(
-                                    position.x * self.window_state.scale,
-                                    position.y * self.window_state.scale,
-                                ));
-                            let size = winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
-                                size.width * self.window_state.scale,
-                                size.height * self.window_state.scale,
-                            ));
-                            self.window
-                                .request_ime_update(ImeRequest::Update(
-                                    ImeRequestData::default().with_cursor_area(position, size),
-                                ))
-                                .unwrap();
-                        }
+                        self.set_ime_cursor_area(position, size);
                     }
                     UpdateMessage::Inspect => {
                         inspector::capture(self.window_id);
@@ -1080,7 +1006,7 @@ impl WindowHandle {
                         self.id.request_all();
                     }
                     UpdateMessage::WindowVisible(visible) => {
-                        self.window.set_visible(visible);
+                        self.set_window_visible(visible);
                     }
                     UpdateMessage::ViewTransitionAnimComplete(id) => {
                         let num_waiting =
@@ -1135,41 +1061,6 @@ impl WindowHandle {
         })
     }
 
-    fn set_cursor(&mut self) {
-        let cursor = match self.window_state.cursor {
-            Some(CursorStyle::Default) => CursorIcon::Default,
-            Some(CursorStyle::Pointer) => CursorIcon::Pointer,
-            Some(CursorStyle::Progress) => CursorIcon::Progress,
-            Some(CursorStyle::Wait) => CursorIcon::Wait,
-            Some(CursorStyle::Crosshair) => CursorIcon::Crosshair,
-            Some(CursorStyle::Text) => CursorIcon::Text,
-            Some(CursorStyle::Move) => CursorIcon::Move,
-            Some(CursorStyle::Grab) => CursorIcon::Grab,
-            Some(CursorStyle::Grabbing) => CursorIcon::Grabbing,
-            Some(CursorStyle::ColResize) => CursorIcon::ColResize,
-            Some(CursorStyle::RowResize) => CursorIcon::RowResize,
-            Some(CursorStyle::WResize) => CursorIcon::WResize,
-            Some(CursorStyle::EResize) => CursorIcon::EResize,
-            Some(CursorStyle::NwResize) => CursorIcon::NwResize,
-            Some(CursorStyle::NeResize) => CursorIcon::NeResize,
-            Some(CursorStyle::SwResize) => CursorIcon::SwResize,
-            Some(CursorStyle::SeResize) => CursorIcon::SeResize,
-            Some(CursorStyle::SResize) => CursorIcon::SResize,
-            Some(CursorStyle::NResize) => CursorIcon::NResize,
-            Some(CursorStyle::NeswResize) => CursorIcon::NeswResize,
-            Some(CursorStyle::NwseResize) => CursorIcon::NwseResize,
-            None => CursorIcon::Default,
-        };
-        if cursor != self.window_state.last_cursor {
-            self.window.set_cursor(cursor.into());
-            self.window_state.last_cursor = cursor;
-        }
-    }
-
-    fn schedule_repaint(&self) {
-        self.window.request_redraw();
-    }
-
     pub(crate) fn destroy(&mut self) {
         self.event(Event::WindowClosed);
         self.scope.dispose();
@@ -1182,10 +1073,8 @@ impl WindowHandle {
             ContextMenu,
             dpi::{LogicalPosition, Position},
         };
-        use raw_window_handle::HasWindowHandle;
-        use raw_window_handle::RawWindowHandle;
 
-        if let RawWindowHandle::AppKit(handle) = self.window.window_handle().unwrap().as_raw() {
+        if let RawWindowHandle::AppKit(handle) = self.raw_window_handle() {
             unsafe {
                 menu.show_context_menu_for_nsview(
                     handle.ns_view.as_ptr() as _,
@@ -1206,10 +1095,8 @@ impl WindowHandle {
             ContextMenu,
             dpi::{LogicalPosition, Position},
         };
-        use raw_window_handle::HasWindowHandle;
-        use raw_window_handle::RawWindowHandle;
 
-        if let RawWindowHandle::Win32(handle) = self.window.window_handle().unwrap().as_raw() {
+        if let RawWindowHandle::Win32(handle) = self.raw_window_handle() {
             unsafe {
                 menu.show_context_menu_for_hwnd(
                     isize::from(handle.hwnd),
@@ -1226,9 +1113,8 @@ impl WindowHandle {
 
     #[cfg(target_os = "windows")]
     fn init_menu_for_windows(&self, menu: &muda::Menu) {
-        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
-        if let RawWindowHandle::Win32(handle) = self.window.window_handle().unwrap().as_raw() {
+        if let RawWindowHandle::Win32(handle) = self.raw_window_handle() {
             unsafe {
                 let menu_theme = match (
                     self.window_state.theme_overriden,
@@ -1247,9 +1133,8 @@ impl WindowHandle {
 
     #[cfg(target_os = "windows")]
     pub(crate) fn set_menu_theme_for_windows(&self, theme: winit::window::Theme) {
-        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
-        if let RawWindowHandle::Win32(handle) = self.window.window_handle().unwrap().as_raw() {
+        if let RawWindowHandle::Win32(handle) = self.raw_window_handle() {
             if let Some(menu) = &self.window_menu {
                 unsafe {
                     let menu_theme = match theme {
@@ -1283,6 +1168,8 @@ impl WindowHandle {
         }
     }
 
+    // We can't really get Ime out of the signature here
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
     pub(crate) fn ime(&mut self, ime: Ime) {
         match ime {
             Ime::Enabled => {

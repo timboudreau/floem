@@ -1,6 +1,7 @@
 use super::WindowUpdate;
 use crate::public_api::{NativeWindow, ScreenLayout, ViewId, WindowIdentifier};
-use peniko::kurbo::Point;
+#[cfg(any(feature = "baseview", feature = "winit"))]
+use peniko::kurbo::{Point, Size};
 
 pub type RootFinder = fn(&ViewId) -> Option<ViewId>;
 pub type OriginFinder = fn(view: &ViewId) -> Point;
@@ -79,6 +80,8 @@ pub trait WindowingBackend: Sized {
 
     /// Called by `ApplicationHandle` at the end of the event loop callback to process window updates.
     fn process_window_updates(id: &WindowIdentifier) -> bool;
+
+    fn logical_surface_size(window : &crate::public_api::NativeWindowInner, scale : f64) -> Size;
 
     /// Because, of necessity, we define `ViewId` in this crate, but not the entire panoply of functionality
     /// available through it, at application start we must have a few functions that can call implementation

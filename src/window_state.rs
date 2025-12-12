@@ -4,6 +4,7 @@ use adapters::WindowSystemTheme;
 use muda::MenuId;
 use peniko::kurbo::{Point, Size};
 use taffy::{AvailableSpace, NodeId};
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::cursor::CursorIcon;
 
 use crate::{
@@ -48,6 +49,7 @@ pub struct WindowState {
     /// This keeps track of all views that have an animation,
     /// regardless of the status of the animation
     pub(crate) cursor: Option<CursorStyle>,
+    #[cfg(all(feature = "winit", not(feature = "baseview")))]
     pub(crate) last_cursor: CursorIcon,
     pub(crate) last_cursor_location: Point,
     pub(crate) keyboard_navigation: bool,
@@ -81,6 +83,7 @@ impl WindowState {
             theme_overriden: false,
             light_dark_theme: os_theme.unwrap_or_default(), // default is light
             cursor: None,
+            #[cfg(all(feature = "winit", not(feature = "baseview")))]
             last_cursor: CursorIcon::Default,
             last_cursor_location: Default::default(),
             keyboard_navigation: false,

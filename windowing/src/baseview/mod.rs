@@ -13,4 +13,6 @@ to remove it in Baseview (I don't see any trivial way of doing that, but it's no
 owns the `WindowInner` - probably the host application, in which case it is effectively static
 - it *must* outlive whatever is drawing in it).
 */
-pub type NativeWindow = Arc<Window<'static>>;
+
+pub type NativeWindowInner = Window<'static>;
+pub type NativeWindow = Arc<NativeWindowInner>;

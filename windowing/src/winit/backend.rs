@@ -9,6 +9,7 @@ use crate::{
     private::window_tracking::with_window,
 };
 use std::{cell::RefCell, collections::HashMap};
+use peniko::kurbo::Size;
 use winit::dpi::{LogicalPosition, LogicalSize};
 
 // Using thread_local for consistency with static vars in updates.rs, but I suspect these
@@ -25,6 +26,11 @@ pub enum WInit {}
 impl WindowingBackend for WInit {
     fn retreive_window_updates(id: &WindowIdentifier) -> Option<Vec<WindowUpdate>> {
         WINDOW_UPDATE_MESSAGES.with_borrow_mut(|map| map.remove(id))
+    }
+
+    fn logical_surface_size(window : &crate::public_api::NativeWindowInner, scale : f64) -> Size {
+        let size: LogicalSize<f64> = window.surface_size().to_logical(scale);
+        Size::new(size.width, size.height)
     }
 
     fn screen_layout_of(view: &ViewId) -> Option<ScreenLayout> {
