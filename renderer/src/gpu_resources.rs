@@ -123,7 +123,10 @@ impl GpuResources {
             backends: Backends::from_env().unwrap_or(Backends::all()),
             ..Default::default()
         });
-        todo!()
+        let (tx, rx) = sync_channel(1);
+        tx.send(Err(GpuResourceError::AdapterNotFoundError));
+        rx
+
         // Channel passing to do async out-of-band within the winit event_loop since wasm can't
         // execute futures with a return value
         /*
