@@ -1,9 +1,12 @@
-pub use winit::icon::{Icon, RgbaIcon};
-pub use winit::monitor::Fullscreen;
-pub use winit::window::Theme;
-pub use winit::window::WindowButtons;
-pub use winit::window::WindowId;
-pub use winit::window::WindowLevel;
+// these were formerly exported, and with the exception of `Theme` (which should be kept
+// for backward compatibility - we accept `impl Into<WindowSystemTheme>` so old code using it can
+// run unmodified) are needed in `window_config` but are expected to be namespaced here.
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+pub use winit::{
+    icon::{Icon, RgbaIcon},
+    monitor::Fullscreen,
+    window::{Theme, WindowButtons, WindowId, WindowLevel},
+};
 
 use crate::AnyView;
 use crate::WindowIdentifier;
@@ -16,6 +19,7 @@ pub use crate::config::window_config_mac::*;
 pub use crate::config::window_config_web::*;
 pub use crate::config::window_config_win::*;
 
+// Pending: Why is this type not pub(crate)?
 pub struct WindowCreation {
     pub(crate) view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>,
     pub(crate) config: Option<WindowConfig>,
