@@ -1,5 +1,7 @@
 #[cfg(all(feature = "winit", feature = "baseview"))]
 compile_error!("feature \"winit\" and feature \"baseview\" are mutually exclusive");
+#[cfg(all(not(feature = "baseview"), not(feature = "winit")))]
+compile_error!("One of the features `baseview` or `winit` must be enabled.");
 
 #[cfg(any(feature = "winit", feature = "baseview"))]
 mod common;

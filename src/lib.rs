@@ -256,9 +256,6 @@ pub use view_state::{Stack, StackOffset};
 pub use window::{close_window, new_window};
 pub use windowing::public_api::*;
 
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-pub use window_baseview::{WindowConfig, close_window, new_window};
-
 pub use window_state::WindowState;
 
 pub mod prelude {

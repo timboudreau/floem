@@ -26,7 +26,6 @@ raw-window-handle-06 = { package = "raw-window-handle", version = "0.6", optiona
 wasm-bindgen-futures = { version = "0.4" }
 
 [features]
-# default =["baseview"]
 crossbeam = ["dep:crossbeam"]
 winit = ["dep:winit"]
 baseview = ["dep:baseview", "dep:raw-window-handle", "dep:raw-window-handle-06"]
