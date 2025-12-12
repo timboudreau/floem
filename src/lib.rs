@@ -176,6 +176,13 @@
 //!
 //! For additional information about animation, [see here](crate::animate::Animation).
 
+// Do this test first, so it is the very first error on an attempt to compile an impossible configuration
+#[cfg(all(feature = "winit", feature = "baseview"))]
+compile_error!("Feature `winit` and feature `baseview` are mutually exclusive. One must be disabled.");
+
+#[cfg(all(not(feature = "winit"), not(feature = "baseview")))]
+compile_error!("Exactly *one* of features  `winit` or `baseview` must be enabled.");
+
 pub mod action;
 pub mod animate;
 mod app;
@@ -186,6 +193,9 @@ mod app_events;
 mod application;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 mod app_winit;
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+// #[cfg(feature="baseview")]
+mod app_baseview;
 #[cfg(feature = "vello")]
 mod border_path_iter;
 mod clipboard;
@@ -275,6 +285,3 @@ pub mod prelude {
         pointer::{PointerButtonEvent, PointerEvent},
     };
 }
-
-#[cfg(all(feature = "winit", feature = "baseview"))]
-compile_error!("feature \"winit\" and feature \"baseview\" are mutually exclusive");

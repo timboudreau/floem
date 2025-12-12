@@ -1,3 +1,119 @@
+//! New window customizations for MacOS.
+#![cfg(target_os = "macos")]
+
+#[cfg(feature = "winit")]
+use crate::window::MacOSWindowConfig;
+use {
+    objc2_app_kit::{NSLayoutAttribute, NSLayoutConstraint, NSLayoutRelation, NSWindowButton},
+    objc2_foundation::NSArray,
+};
+
+#[cfg(feature = "winit")]
+pub(super) fn apply_mac_os_attributes(
+    window_attributes: winit::window::WindowAttributes,
+    show_titlebar: bool,
+    undecorated: bool,
+    mac_os_config: &Option<MacOSWindowConfig>,
+) -> winit::window::WindowAttributes {
+    // Moving this out of a giant stanza in `AppHandle.new_window()`.
+
+    // This relies on winit specific types, and for baseview, since the window is ordinarily created
+    // by the host application (in Logic Pro or Garage Band, the window is not even created by the same
+    // *process* as the plugin), there is no equivalent there.
+
+    let mut mac_attrs = winit::platform::macos::WindowAttributesMacOS::default();
+
+    if !show_titlebar {
+        mac_attrs = mac_attrs
+            .with_movable_by_window_background(false)
+            .with_title_hidden(true)
+            .with_titlebar_transparent(true)
+            .with_fullsize_content_view(true);
+        // .with_traffic_lights_offset(11.0, 16.0);
+    }
+    if undecorated {
+        // A palette-style window that will only obtain window focus but
+        // not actually propagate the first mouse click it receives is
+        // very unlikely to be expected behavior - these typically are
+        // used for something that offers a quick choice and are closed
+        // in a single pointer gesture.
+        mac_attrs = mac_attrs.with_accepts_first_mouse(true);
+    }
+    if let Some(mac) = mac_os_config {
+        if let Some(val) = mac.movable_by_window_background {
+            mac_attrs = mac_attrs.with_movable_by_window_background(val);
+        }
+        if let Some(val) = mac.titlebar_transparent {
+            mac_attrs = mac_attrs.with_titlebar_transparent(val);
+        }
+        if let Some(val) = mac.titlebar_hidden {
+            mac_attrs = mac_attrs.with_titlebar_hidden(val);
+        }
+        if let Some(val) = mac.title_hidden {
+            mac_attrs = mac_attrs.with_title_hidden(val);
+        }
+        if let Some(val) = mac.full_size_content_view {
+            mac_attrs = mac_attrs.with_fullsize_content_view(val);
+        }
+        if let Some(val) = mac.unified_titlebar {
+            mac_attrs = mac_attrs.with_unified_titlebar(val);
+        }
+        if let Some(val) = mac.movable {
+            mac_attrs = mac_attrs.with_movable_by_window_background(val);
+        }
+        if let Some(val) = mac.accepts_first_mouse {
+            mac_attrs = mac_attrs.with_accepts_first_mouse(val);
+        }
+        if let Some(val) = mac.option_as_alt {
+            mac_attrs = mac_attrs.with_option_as_alt(val.into());
+        }
+        if let Some(title) = &mac.tabbing_identifier {
+            mac_attrs = mac_attrs.with_tabbing_identifier(title.as_str());
+        }
+        if let Some(disallow_hidpi) = mac.disallow_high_dpi {
+            mac_attrs = mac_attrs.with_disallow_hidpi(disallow_hidpi);
+        }
+        if let Some(shadow) = mac.has_shadow {
+            mac_attrs = mac_attrs.with_has_shadow(shadow);
+        }
+        if let Some(hide) = mac.titlebar_buttons_hidden {
+            mac_attrs = mac_attrs.with_titlebar_buttons_hidden(hide)
+        }
+        // if let Some(panel) = mac.panel {
+        //     window_attributes = window_attributes.with_panel(panel)
+        // }
+    }
+    // Note, previously, this call was inside the if/then above, and would never run unless a mac os
+    // config was also set (undecorated and !show_titlebar would not work if there wasn't also a mac_attrs present).
+    // That was almost certainly a bug.
+    window_attributes.with_platform_attributes(Box::new(mac_attrs))
+}
+
+#[cfg(feature = "winit")]
+pub(super) fn mac_os_post_window_creation_config(
+    window: &Box<dyn winit::window::Window>,
+    mac_os_config: &Option<MacOSWindowConfig>,
+) {
+    if let Some(mac) = &mac_os_config {
+        if let Some((x, y)) = mac.traffic_lights_offset {
+            use raw_window_handle::HasWindowHandle;
+
+            if let Ok(wh) = window.window_handle() {
+                use raw_window_handle::RawWindowHandle;
+
+                if let RawWindowHandle::AppKit(app_kit) = wh.as_raw() {
+                    let _ = super::os_mac::setup_traffic_light_constraints_all_pixels(
+                        &app_kit, x, y, 6.,
+                    );
+                }
+            }
+        }
+    }
+}
+
+// Leaving the below as available on non-winit windowing systems, though it may not
+// turn out to have utility on hosted windows.
+
 /// Sets up traffic light button constraints with precise pixel positioning.
 ///
 /// # Parameters
@@ -23,18 +139,12 @@
 /// - Centered in 30pt bar: `(10.0, 8.5, 6.0)`
 /// - Centered in 40pt bar: `(10.0, 13.5, 6.0)`
 /// - Centered in 50pt bar: `(10.0, 18.5, 6.0)`
-#[cfg(target_os = "macos")]
 pub(super) fn setup_traffic_light_constraints_all_pixels(
     view_handle: &raw_window_handle::AppKitWindowHandle,
     leading_pixels: f64,
     top_pixels: f64,
     button_spacing_pixels: f64,
 ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-    use {
-        objc2_app_kit::{NSLayoutAttribute, NSLayoutConstraint, NSLayoutRelation, NSWindowButton},
-        objc2_foundation::NSArray,
-    };
-
     let ns_view = view_handle.ns_view.cast::<objc2_app_kit::NSView>();
     let ns_view = unsafe { &*ns_view.as_ptr() };
     let window = ns_view
