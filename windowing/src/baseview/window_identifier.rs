@@ -1,11 +1,14 @@
+#![allow(deprecated)]
 use baseview::*;
-use baseview_raw_window_handle::HasRawWindowHandle as BaseviewHasRawWindowHandle;
-use baseview_raw_window_handle::RawWindowHandle as BaseviewRawWindowHandle;
-use raw_window_handle::RawWindowHandle;
+use baseview_raw_window_handle::{
+    HasRawWindowHandle as BaseviewHasRawWindowHandle, RawWindowHandle as BaseviewRawWindowHandle,
+    HasRawDisplayHandle as BaseviewHasRawDisplayHandle
+};
 use slotmap::*;
 use std::cell::RefCell;
 
-use crate::baseview::compatibility::Convert;
+use crate::baseview::{compatibility::Convert};
+use super::handles::BaseviewHandles;
 /*
 Hmm, baseview::Window has a lifetime.
 
@@ -32,19 +35,45 @@ new_key_type! {
 impl crate::common::WindowIdDelegate for WindowIdentifier {}
 
 thread_local! {
-    static WINDOW_STORAGE : RefCell<SlotMap<WindowIdentifier, RawWindowHandle>> = RefCell::new(SlotMap::with_key());
+    static WINDOW_STORAGE : RefCell<SlotMap<WindowIdentifier, BaseviewHandles>> = RefCell::new(SlotMap::with_key());
 }
 
-pub fn register_window<'a>(window: &Window<'a>) -> WindowIdentifier {
-    let handle: RawWindowHandle = window.raw_window_handle().convert();
-    WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(handle))
+/// In theory, if the window was initially passed without native resources allocated,
+/// then we could update them here. Or conceivably, the window could be replaced at runtime?
+pub fn update_registration<'a>(id: WindowIdentifier, window : &mut Window<'a>) {
+    let handles = BaseviewHandles {
+        window : window.raw_window_handle().convert(),
+        display : window.raw_display_handle().convert(),
+    };
+    WINDOW_STORAGE.with(|cell| {
+        let mut m = cell.borrow_mut();
+        if let Some(r) = m.get_mut(id) {
+            *r = handles;
+        } else {
+            panic!("Updating registration for an id not present.");
+        }
+    });
+}
+
+pub fn register_window<'a>(window: &mut Window<'a>) -> WindowIdentifier {
+    let handles = BaseviewHandles {
+        window : window.raw_window_handle().convert(),
+        display : window.raw_display_handle().convert(),
+    };
+    WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(handles))
+}
+
+/// Not sure if we will need reverse lookup, but it is helpful for debugging
+pub fn find(window : &mut Window<'_>) -> Option<WindowIdentifier> {
+    let handle = window.raw_window_handle();
+    window_id_for(&handle)
 }
 
 pub fn window_id_for(handle: &BaseviewRawWindowHandle) -> Option<WindowIdentifier> {
     let ours = handle.convert();
     WINDOW_STORAGE.with(|cell| {
         for (k, v) in cell.borrow().iter() {
-            if v == &ours {
+            if &v.window == &ours {
                 return Some(k);
             }
         }

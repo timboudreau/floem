@@ -1,4 +1,4 @@
-use crate::application::spi::AppHandlerInternalAPI;
+use crate::{app_events::UserEvent, application::spi::AppHandlerInternalAPI, AppConfig};
 
 use super::app::*;
 use baseview::WindowHandler;
@@ -48,14 +48,14 @@ impl Application {
     }
 
     fn on_frame(&mut self, id : &WindowIdentifier, window: &mut baseview::Window) {
-        self.event_processing::<_, true>(event_loop, move |handle, _| {
+        self.event_processing::<_, true>(Some(window), move |handle, w, _| {
             handle.handle_updates_for_all_windows();
         });
     }
 
-    fn on_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        self.event_processing::<_, false>(event_loop, move |handle, window_opt| {
-            handle.handle_window_event(window_id.into(), event, window);
+    fn on_baseview_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
+        self.event_processing::<_, false>(Some(window), move |handle, window_opt| {
+            handle.handle_window_event(window_id.into(), event, window_opt);
         });
     }
 }
@@ -74,6 +74,6 @@ impl WindowHandler for OneWindowHandler {
     }
 
     fn on_event(&mut self, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        self.app.borrow_mut().on_event(&self.window, window, event)
+        self.app.borrow_mut().on_baseview_event(&self.window, window, event)
     }
 }

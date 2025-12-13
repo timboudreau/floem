@@ -149,7 +149,7 @@ objc2-app-kit = { version = "0.3", features = [
 ] }
 
 [features]
-default = ["editor", "default-image-formats", "vger", "winit"]
+default = ["editor", "default-image-formats", "vger", "baseview"]
 winit = ["dep:winit", "dep:ui-events-winit", "event/winit", "floem_renderer/winit", "windowing/winit", "adapters/winit"]
 baseview = ["dep:baseview", "dep:ui-events-baseview", "floem_renderer/baseview", "windowing/baseview"]
 vello = ["dep:floem_vello_renderer"]

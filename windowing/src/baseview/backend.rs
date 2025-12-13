@@ -8,7 +8,7 @@ pub enum Baseview {}
 
 impl WindowingBackend for Baseview {
     fn retreive_window_updates(id: &WindowIdentifier) -> Option<Vec<WindowUpdate>> {
-        todo!()
+        crate::private::window_update_messages::retreive_window_update_messages(id)
     }
 
     /// Called by `ApplicationHandle` at the end of the event loop callback to process window updates.
@@ -23,6 +23,6 @@ impl WindowingBackend for Baseview {
 
 impl WindowingBackendInternal for Baseview {
     fn push_window_update(id: &WindowIdentifier, msg: WindowUpdate) {
-        todo!()
+        crate::private::window_update_messages::push_window_update_message(id, msg);
     }
 }

@@ -1,7 +1,6 @@
 //! winit-specific parts of Application
 
 use adapters::WindowSystemTheme;
-use floem_reactive::Runtime;
 use parking_lot::Mutex;
 use raw_window_handle::HasDisplayHandle;
 use winit::{application::ApplicationHandler, event::WindowEvent, event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy}, window::WindowId};

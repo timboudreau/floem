@@ -4,12 +4,11 @@
 //! and use the methods that look up the `Window` for that id to retrieve information
 //! such as screen position.
 use crate::{
-    internal_api::{WindowingBackend, WindowingSystem},
+    internal_api::{WindowingBackend as _, WindowingSystem},
     public_api::{NativeWindow, ViewId, WindowIdentifier},
 };
 use std::collections::HashMap;
 
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 mod mapping_storage {
     use crate::private::window_tracking::WindowMapping;
     use std::sync::{OnceLock, RwLock};
@@ -32,25 +31,6 @@ mod mapping_storage {
         } else {
             None
         }
-    }
-}
-
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-mod mapping_storage {
-    use crate::private::window_tracking::WindowMapping;
-    use std::cell::RefCell;
-    thread_local! {
-        static WINDOW_FOR_WINDOW_AND_ROOT_IDS: RefCell<WindowMapping> = RefCell::default();
-    }
-
-    pub(crate) fn with_window_map_mut<F: FnMut(&mut WindowMapping)>(f: F) -> bool {
-        WINDOW_FOR_WINDOW_AND_ROOT_IDS.with_borrow_mut(f);
-        // unlike the winit version, this cannot fail, but we should make the implementations compatible.
-        true
-    }
-
-    pub(crate) fn with_window_map<F: FnOnce(&WindowMapping) -> T, T>(f: F) -> Option<T> {
-        Some(WINDOW_FOR_WINDOW_AND_ROOT_IDS.with_borrow(f))
     }
 }
 

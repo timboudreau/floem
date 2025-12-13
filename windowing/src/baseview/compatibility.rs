@@ -1,5 +1,5 @@
 use baseview_raw_window_handle::{
-    RawDisplayHandle as BaseviewRawDisplayHandle, RawWindowHandle as BaseviewRawWindowHandle,
+    RawDisplayHandle as BaseviewRawDisplayHandle, RawWindowHandle as BaseviewRawWindowHandle
 };
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 use std::ptr::NonNull;
@@ -78,6 +78,10 @@ impl Convert<RawWindowHandle> for BaseviewRawWindowHandle {
 impl Convert<BaseviewRawDisplayHandle> for RawDisplayHandle {
     fn convert(&self) -> BaseviewRawDisplayHandle {
         match self {
+            RawDisplayHandle::UiKit(ui_kit_display_handle) => {
+                let res = baseview_raw_window_handle::UiKitDisplayHandle::empty();
+                BaseviewRawDisplayHandle::UiKit(res)
+            }
             RawDisplayHandle::AppKit(app_kit_display_handle) => {
                 // No fields?  Is this even a thing that does anything?
                 let res = baseview_raw_window_handle::AppKitDisplayHandle::empty();
@@ -91,6 +95,16 @@ impl Convert<BaseviewRawDisplayHandle> for RawDisplayHandle {
 #[allow(unused)]
 impl Convert<RawDisplayHandle> for BaseviewRawDisplayHandle {
     fn convert(&self) -> RawDisplayHandle {
-        todo!()
+        match self {
+            BaseviewRawDisplayHandle::UiKit(ui_kit_display_handle) => {
+                let mut result = raw_window_handle::UiKitDisplayHandle::new();
+                RawDisplayHandle::UiKit(result)
+            },
+            BaseviewRawDisplayHandle::AppKit(app_kit_display_handle) => {
+                let result = raw_window_handle::AppKitDisplayHandle::new();
+                RawDisplayHandle::AppKit(result)
+            },
+            _ => todo!(),
+        }
     }
 }

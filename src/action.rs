@@ -108,12 +108,19 @@ pub fn toggle_window_theme() {
 }
 
 /// Get current window theme.
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub fn current_theme() -> Option<WindowSystemTheme> {
     use windowing::internal_api::{WindowingBackend as _, WindowingSystem};
 
     use crate::ViewIdentifier as _;
     let win_id = get_current_view().window_id()?;
     WindowingSystem::with_window(&win_id, |w| w.theme().map(WindowSystemTheme::from))?
+}
+
+/// Get current window theme.
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+pub fn current_theme() -> Option<WindowSystemTheme> {
+    None
 }
 
 pub(crate) struct Timer {

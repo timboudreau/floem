@@ -1,6 +1,5 @@
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{Receiver};
-use winit::platform::macos::EventLoop;
 
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{Receiver};
