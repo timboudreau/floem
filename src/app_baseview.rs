@@ -40,7 +40,6 @@ impl Application {
                 action_id: event.id,
             });
         }));
-
         Self {
             receiver,
             handle,
@@ -49,14 +48,21 @@ impl Application {
     }
 
     fn on_frame(&mut self, id : &WindowIdentifier, window: &mut baseview::Window) {
-
+        self.event_processing::<_, true>(event_loop, move |handle, _| {
+            handle.handle_updates_for_all_windows();
+        });
     }
 
     fn on_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        self.handle.handle_window_event(window_id, event, Some(window));
+        self.event_processing::<_, false>(event_loop, move |handle, window_opt| {
+            handle.handle_window_event(window_id.into(), event, window);
+        });
     }
 }
 
+/// Baseview gives nothing to grab hold of to easily figure out *which* window is being painted except the
+/// identity of the handler being called (well, we could use the raw window handle as identity, but that
+/// doesn't seem immensely reliable).
 struct OneWindowHandler {
     window : WindowIdentifier,
     app : Arc<RefCell<Application>>,

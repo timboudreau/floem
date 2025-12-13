@@ -82,13 +82,13 @@ impl ApplicationHandler for Application {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        self.event_processing::<_, false>(event_loop, move |handle| {
-            handle.handle_window_event(window_id.into(), event, event_loop);
+        self.event_processing::<_, false>(event_loop, move |handle, w| {
+            handle.handle_window_event(window_id.into(), event, w);
         });
     }
 
     fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
-        self.event_processing::<_, true>(event_loop, move |handle| {
+        self.event_processing::<_, true>(event_loop, move |handle, _| {
             handle.handle_updates_for_all_windows();
         });
     }
@@ -101,6 +101,6 @@ impl ApplicationHandler for Application {
 
     fn about_to_wait(&mut self, event_loop: &dyn ActiveEventLoop) {
         // Run the pre-and post event processing code, but do nothing else
-        self.event_processing::<_, false>(event_loop, |_|{});
+        self.event_processing::<_, false>(event_loop, |_, _|{});
     }
 }

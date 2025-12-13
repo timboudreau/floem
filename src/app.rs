@@ -1,5 +1,6 @@
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{Receiver};
+use winit::platform::macos::EventLoop;
 
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{Receiver};
@@ -29,6 +30,8 @@ use crate::{
 pub fn launch<V: IntoView + 'static>(app_view: impl FnOnce() -> V + 'static) {
     Application::new().window(move |_| app_view(), None).run()
 }
+
+type EventLoopType = <ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop;
 
 /// Floem top level application
 /// This is the entry point of the application.
@@ -92,9 +95,9 @@ impl Application {
     /// This simply allows multiple windowing-system implementations to share this code without the risk
     /// of diverging due to having their own copies of it.
     #[inline(always)]
-    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle), const USER_EVENTS: bool>(&mut self, event_loop: &<ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop, f : F) {
+    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
         self.handle.handle_timer(event_loop);
-        f(&mut self.handle);
+        f(&mut self.handle, event_loop);
         if USER_EVENTS {
             for event in self.receiver.try_iter() {
                 self.handle.handle_user_event(event_loop, event);
