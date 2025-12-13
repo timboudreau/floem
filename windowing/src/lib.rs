@@ -9,7 +9,8 @@ mod common;
 #[cfg(any(feature = "winit", feature = "baseview"))]
 pub(crate) mod private;
 
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
+// #[cfg(all(feature = "baseview", not(feature = "winit")))]
+#[cfg(feature = "baseview")]
 mod baseview;
 
 #[cfg(all(feature = "winit", not(feature = "baseview")))]

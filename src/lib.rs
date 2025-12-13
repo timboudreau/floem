@@ -193,8 +193,8 @@ mod app_events;
 mod application;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 mod app_winit;
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-// #[cfg(feature="baseview")]
+// #[cfg(all(feature = "baseview", not(feature = "winit")))]
+#[cfg(feature="baseview")]
 mod app_baseview;
 #[cfg(feature = "vello")]
 mod border_path_iter;
@@ -284,4 +284,7 @@ pub mod prelude {
         keyboard::{Code, Key, KeyState, KeyboardEvent, Modifiers, NamedKey},
         pointer::{PointerButtonEvent, PointerEvent},
     };
+    // Adding this here so that less client code will need to add an import of this to compile,
+    // since all the methods of `ViewId` now live here:
+    pub use crate::ViewIdentifier;
 }

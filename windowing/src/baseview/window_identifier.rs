@@ -1,5 +1,11 @@
+use baseview::*;
+use baseview_raw_window_handle::HasRawWindowHandle as BaseviewHasRawWindowHandle;
+use baseview_raw_window_handle::RawWindowHandle as BaseviewRawWindowHandle;
+use raw_window_handle::RawWindowHandle;
 use slotmap::*;
-use std::{borrow::BorrowMut, cell::RefCell, sync::Arc, sync::LazyLock};
+use std::cell::RefCell;
+
+use crate::baseview::compatibility::Convert;
 /*
 Hmm, baseview::Window has a lifetime.
 
@@ -26,11 +32,22 @@ new_key_type! {
 impl crate::common::WindowIdDelegate for WindowIdentifier {}
 
 thread_local! {
-    static WINDOW_STORAGE : RefCell<SlotMap<WindowIdentifier, Arc<baseview::Window<'static>>>> = RefCell::new(SlotMap::with_key());
+    static WINDOW_STORAGE : RefCell<SlotMap<WindowIdentifier, RawWindowHandle>> = RefCell::new(SlotMap::with_key());
 }
 
-impl From<Arc<baseview::Window<'static>>> for WindowIdentifier {
-    fn from(value: Arc<baseview::Window<'static>>) -> Self {
-        WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(value))
-    }
+pub fn register_window<'a>(window: &Window<'a>) -> WindowIdentifier {
+    let handle: RawWindowHandle = window.raw_window_handle().convert();
+    WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(handle))
+}
+
+pub fn window_id_for(handle: &BaseviewRawWindowHandle) -> Option<WindowIdentifier> {
+    let ours = handle.convert();
+    WINDOW_STORAGE.with(|cell| {
+        for (k, v) in cell.borrow().iter() {
+            if v == &ours {
+                return Some(k);
+            }
+        }
+        return None;
+    })
 }

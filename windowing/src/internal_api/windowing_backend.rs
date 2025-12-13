@@ -81,7 +81,7 @@ pub trait WindowingBackend: Sized {
     /// Called by `ApplicationHandle` at the end of the event loop callback to process window updates.
     fn process_window_updates(id: &WindowIdentifier) -> bool;
 
-    fn logical_surface_size(window : &crate::public_api::NativeWindowInner, scale : f64) -> Size;
+    fn logical_surface_size(window: &crate::public_api::NativeWindowInner, scale: f64) -> Size;
 
     /// Because, of necessity, we define `ViewId` in this crate, but not the entire panoply of functionality
     /// available through it, at application start we must have a few functions that can call implementation

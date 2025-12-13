@@ -13,6 +13,7 @@ use crate::{
     AppConfig, AppEvent, View,
 };
 use adapters::WindowSystemTheme;
+use baseview::WindowEvent;
 use floem_reactive::{SignalUpdate, WriteSignal};
 use muda::MenuId;
 use std::rc::Rc;
@@ -20,9 +21,9 @@ use ui_events_baseview::WindowEventTranslation;
 use windowing::public_api::WindowIdentifier;
 
 impl AppHandlerInternalAPI for ApplicationHandle {
-    type WindowingSystemEventLoop = ();
+    type WindowingSystemEventLoop = Option<&mut baseview::Window>;
 
-    type WindowingSystemWindowEvent = ();
+    type WindowingSystemWindowEvent = WindowEvent;
 
     fn handle_window_creation(
         &mut self,
@@ -65,9 +66,15 @@ impl AppHandlerInternalAPI for ApplicationHandle {
     fn handle_window_event(
         &mut self,
         window_id: WindowIdentifier,
-        event: Self::WindowingSystemWindowEvent,
+        event: WindowEvent,
         event_loop: &Self::WindowingSystemEventLoop,
     ) {
+        match event {
+            WindowEvent::Resized(window_info) => todo!(),
+            WindowEvent::Focused => todo!(),
+            WindowEvent::Unfocused => todo!(),
+            WindowEvent::WillClose => todo!(),
+        }
         todo!()
     }
 }

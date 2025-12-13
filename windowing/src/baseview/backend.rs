@@ -1,8 +1,8 @@
 use crate::{
     internal_api::{WindowUpdate, WindowingBackend, WindowingBackendInternal},
-    public_api::WindowIdentifier,
 };
 use peniko::kurbo::Size;
+use super::window_identifier::WindowIdentifier;
 
 pub enum Baseview {}
 
@@ -16,7 +16,7 @@ impl WindowingBackend for Baseview {
         todo!()
     }
 
-    fn logical_surface_size(window : &crate::public_api::NativeWindowInner, scale : f64) -> Size {
+    fn logical_surface_size(window: &super::NativeWindowInner, scale: f64) -> Size {
         todo!()
     }
 }

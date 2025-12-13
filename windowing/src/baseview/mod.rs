@@ -1,11 +1,9 @@
 mod backend;
+mod compatibility;
 mod window_identifier;
 
-use baseview::Window;
+use raw_window_handle::*;
 use std::sync::Arc;
-
-pub use backend::*;
-pub use window_identifier::*;
 
 /*
 Pending - we need a way to hide the lifetime on baseview's Window type, or find a way
@@ -14,5 +12,8 @@ owns the `WindowInner` - probably the host application, in which case it is effe
 - it *must* outlive whatever is drawing in it).
 */
 
-pub type NativeWindowInner = Window<'static>;
+pub use window_identifier::*;
+pub use backend::*;
+
+pub type NativeWindowInner = RawWindowHandle;
 pub type NativeWindow = Arc<NativeWindowInner>;
