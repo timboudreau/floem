@@ -4,7 +4,7 @@ use crossbeam::channel::{Receiver};
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{Receiver};
 
-use crate::{app_events::UserEvent, AppConfig, AppEvent, WindowIdentifier};
+use crate::{app_events::UserEvent, application::spi::AppHandlerInternalAPI, AppConfig, AppEvent, WindowIdentifier};
 use floem_reactive::{Runtime};
 
 use crate::{
@@ -81,6 +81,28 @@ impl Application {
         Runtime::init_on_ui_thread();
         // Nudge UI when sync signals are updated from other threads.
         Runtime::set_sync_effect_waker(|| Application::send_proxy_event(UserEvent::Idle));
+    }
+
+    /// Run a function that handles inbound events or timer wakeups and takes the `ApplicationHandle`.
+    /// The const-generic `USER_EVENTS` determines whether user events are also run - by using const
+    /// generics for this, we ensure that two monomorphized versions of this method are emitted into
+    /// the binary, and we don't pay a price at runtime.  Basically, the same set of calls to handle
+    /// timers and call Runtime::drain_pending_work() surround more than one kind of event processing.
+    ///
+    /// This simply allows multiple windowing-system implementations to share this code without the risk
+    /// of diverging due to having their own copies of it.
+    #[inline(always)]
+    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle), const USER_EVENTS: bool>(&mut self, event_loop: &<ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop, f : F) {
+        self.handle.handle_timer(event_loop);
+        f(&mut self.handle);
+        if USER_EVENTS {
+            for event in self.receiver.try_iter() {
+                self.handle.handle_user_event(event_loop, event);
+            }
+        }
+        if Runtime::has_pending_work() {
+            Runtime::drain_pending_work();
+        }
     }
 }
 

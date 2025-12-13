@@ -82,23 +82,15 @@ impl ApplicationHandler for Application {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        self.handle.handle_timer(event_loop);
-        self.handle
-            .handle_window_event(window_id.into(), event, event_loop);
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
+        self.event_processing::<_, false>(event_loop, move |handle| {
+            handle.handle_window_event(window_id.into(), event, event_loop);
+        });
     }
 
     fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
-        self.handle.handle_timer(event_loop);
-        for event in self.receiver.try_iter() {
-            self.handle.handle_user_event(event_loop, event);
-        }
-        self.handle.handle_updates_for_all_windows();
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
+        self.event_processing::<_, true>(event_loop, move |handle| {
+            handle.handle_updates_for_all_windows();
+        });
     }
 
     fn destroy_surfaces(&mut self, _event_loop: &dyn ActiveEventLoop) {
@@ -108,9 +100,7 @@ impl ApplicationHandler for Application {
     }
 
     fn about_to_wait(&mut self, event_loop: &dyn ActiveEventLoop) {
-        self.handle.handle_timer(event_loop);
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
+        // Run the pre-and post event processing code, but do nothing else
+        self.event_processing::<_, false>(event_loop, |_|{});
     }
 }
