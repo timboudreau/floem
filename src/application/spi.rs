@@ -92,9 +92,11 @@ pub(crate) trait AppHandlerInternalAPI: AppHandlerCommon {
 
     #[allow(unused)]
     /// This is needed for baseview, where we can only process events for a window within the closure of a callback
-    fn handle_updates_for_one_window(&mut self, window : &WindowIdentifier, handle : &mut WindowHandle, _: &Self::WindowingSystemEventLoop) {
-        handle.process_update();
-        while WindowingSystem::process_window_updates(window) {}
+    fn handle_updates_for_one_window(&mut self, window : &WindowIdentifier, _: &Self::WindowingSystemEventLoop) {
+        if let Some(h) = self.window_handle_for_window_id(window) {
+            h.process_update();
+            while WindowingSystem::process_window_updates(window) {}
+        }
     }
 
     fn handle_timer(&mut self, event_loop: &Self::WindowingSystemEventLoop);

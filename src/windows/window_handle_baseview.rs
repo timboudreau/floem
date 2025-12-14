@@ -58,7 +58,7 @@ impl WindowHandleNative for WindowHandle {
     }
 
     fn is_window_maximized(&self) -> bool {
-
+        false
     }
 
     fn set_window_maximized(&mut self, maximized : bool) {

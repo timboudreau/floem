@@ -9,7 +9,7 @@ mod app_handle_winit;
 mod app_handle_baseview;
 
 #[cfg(feature = "baseview")]
-mod baseview_hacks;
+pub(crate) mod baseview_hacks;
 
 // OS-specific window configuration, platform-dependent:
 

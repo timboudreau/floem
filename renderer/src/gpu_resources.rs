@@ -12,6 +12,8 @@ use std::{future::Future, sync::Arc};
 
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{bounded as sync_channel, Receiver};
+#[cfg(feature = "baseview")]
+use raw_window_handle_06::{HasDisplayHandle, HasWindowHandle};
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{sync_channel, Receiver};
 use wgpu::Backends;
@@ -113,11 +115,12 @@ impl GpuResources {
         rx
     }
 
-    #[cfg(all(feature = "baseview", not(feature = "winit")))]
-    pub fn request<F: Fn(WindowHandle) + 'static>(
+    // #[cfg(all(feature = "baseview", not(feature = "winit")))]
+    #[cfg(feature = "baseview")]
+    pub fn request<F: Fn(windowing::public_api::WindowIdentifier) + 'static, W : HasDisplayHandle + HasWindowHandle + 'static>(
         on_result: F,
         required_features: wgpu::Features,
-        window: Arc<baseview::Window>,
+        window: W,
     ) -> Receiver<Result<(Self, wgpu::Surface<'static>), GpuResourceError>> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::from_env().unwrap_or(Backends::all()),

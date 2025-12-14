@@ -15,7 +15,7 @@ use crate::{
     kurbo::Size,
 };
 use adapters::WindowSystemTheme;
-use baseview::Event;
+use baseview::{*, gl::*};
 use floem_reactive::{SignalUpdate, WriteSignal};
 use muda::MenuId;
 use std::rc::Rc;
@@ -107,11 +107,13 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             .reduce(window_handle.scale, &event)
         {
             Some(WindowEventTranslation::Keyboard(ke)) => {
-                if let WindowEvent::KeyboardInput { is_synthetic, .. } = event {
-                    if !is_synthetic {
-                        window_handle.key_event(ke)
-                    }
-                }
+                window_handle.key_event(ke);
+                // FIXME:
+                // if let WindowEvent::KeyboardInput { is_synthetic, .. } = event {
+                //     if !is_synthetic {
+                //         window_handle.key_event(ke)
+                //     }
+                // }
             }
             Some(WindowEventTranslation::Pointer(pe)) => {
                 window_handle.pointer_event(pe);

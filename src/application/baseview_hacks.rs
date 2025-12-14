@@ -1,5 +1,5 @@
 use std::{ops::{Deref, DerefMut}, thread};
-use baseview::Window;
+use baseview::{*, gl::GlContext};
 use peniko::kurbo::Size;
 
 /*
@@ -13,7 +13,7 @@ We should find a better way to do this.
 
 pub(crate) const NO_WINDOW : BaseviewPseudoEventLoop = BaseviewPseudoEventLoop { window : 0 };
 
-
+// hope we don't have to use this
 thread_local! {
     static CURRENT_WINDOW : std::cell::RefCell<BaseviewPseudoEventLoop> = std::cell::RefCell::new(NO_WINDOW);
 }
@@ -31,7 +31,6 @@ pub(crate) fn current_window() -> BaseviewPseudoEventLoop {
         c.borrow().to_owned()
     })
 }
-
 
 #[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct BaseviewPseudoEventLoop {
@@ -60,16 +59,20 @@ impl BaseviewPseudoEventLoop {
     }
 
     pub fn gl_context(&self) -> Option<&baseview::gl::GlContext> {
-        let op : Option<Option<&baseview::GlContext>> = self.with_ref(|w| {
+        let r = unsafe { &*(self.window as *const Window<'_>) };
+        r.gl_context()
+        /*
+        let op : Option<Option<&baseview::gl::GlContext>> = self.with_ref(|w| {
             w.gl_context()
         });
         if let Some(op) = op {
             return op
         }
         None
+         */
     }
 
-    fn with_mut<'l, T>(&self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {
+    fn with_mut<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {
         if self.window != 0 {
             let r = unsafe { &mut * (self.window as *mut Window<'l>) };
             Some(f(r))
@@ -78,7 +81,7 @@ impl BaseviewPseudoEventLoop {
         }
     }
 
-    fn with_ref<'l, T>(&self, f : impl FnOnce(&Window<'l>) -> T) -> Option<T> {
+    fn with_ref<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&Window<'l>) -> T) -> Option<T> {
         if self.window != 0 {
             let r = unsafe { &*(self.window as *const Window<'l>) };
             Some(f(r))
@@ -103,8 +106,16 @@ impl<'l> DerefMut for BaseviewPseudoEventLoop {
 }
  */
 
-impl<'l> From<&'l mut Window<'l>> for BaseviewPseudoEventLoop {
-    fn from(value: &'l mut Window<'l>) -> Self {
+// impl<'l> From<&'l mut Window<'l>> for BaseviewPseudoEventLoop {
+//     fn from(value: &'l mut Window<'l>) -> Self {
+//         let pt : *mut Window<'l> = value;
+//         Self {
+//             window : pt as usize,
+//         }
+//     }
+// }
+impl<'l> From<&mut Window<'l>> for BaseviewPseudoEventLoop {
+    fn from(value: &mut Window<'l>) -> Self {
         let pt : *mut Window<'l> = value;
         Self {
             window : pt as usize,

@@ -29,3 +29,7 @@ pub mod public_api {
     #[cfg(all(feature = "winit", not(feature = "baseview")))]
     pub use super::winit::*;
 }
+
+// Sigh.
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+pub use baseview_raw_window_handle::{HasRawWindowHandle as BaseviewHasRawWindowHandle, RawWindowHandle as BaseviewRawWindowHandle, HasRawDisplayHandle as BaseviewHasRawDisplayHandle, RawDisplayHandle as BaseviewRawDisplayHandle};

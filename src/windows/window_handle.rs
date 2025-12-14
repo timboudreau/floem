@@ -31,7 +31,9 @@ use crate::reactive::SignalWith;
 use crate::unit::UnitExt;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::views::{Decorators, container, stack};
+
 use super::window_handle_utils::WindowHandleNative;
+
 use crate::NativeWindow;
 use crate::{
     Application,
@@ -108,7 +110,12 @@ impl WindowHandle {
         let scale = window.scale_factor();
         let size = WindowingSystem::logical_surface_size(window.as_ref(), scale);
         let size = scope.create_rw_signal(Size::new(size.width, size.height));
+
+        #[cfg(feature = "winit")]
         let os_theme = window.theme().map(WindowSystemTheme::from);
+
+        #[cfg(feature = "baseview")]
+        let os_theme: Option<WindowSystemTheme> = Some(WindowSystemTheme::default());
 
         let is_maximized = window.is_maximized();
 
@@ -162,7 +169,9 @@ impl WindowHandle {
                 font_embolden,
             )
         } else {
-            let gpu_resources_rx = GpuResources::request(
+            #[cfg(feature = "winit")]
+            let gpu_resources_rx = {
+                GpuResources::request(
                 move |window_id| {
                     Application::send_proxy_event(UserEvent::GpuResourcesUpdate {
                         window_id: window_id.into(),
@@ -170,7 +179,23 @@ impl WindowHandle {
                 },
                 required_features,
                 window.clone(),
-            );
+            )
+            };
+            #[cfg(feature = "baseview")]
+            let gpu_resources_rx = {
+                let wid = window.id();
+                let ww = Arc::into_inner(window.clone()).expect("Could not unwrap handle");
+                GpuResources::request(
+                move |window_id| {
+                    Application::send_proxy_event(UserEvent::GpuResourcesUpdate {
+                        window_id: wid,
+                    });
+                },
+                required_features,
+                ww,
+            )
+            };
+
             PaintState::new_pending(
                 window.clone(),
                 gpu_resources_rx,

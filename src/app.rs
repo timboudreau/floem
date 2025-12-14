@@ -18,6 +18,9 @@ use crate::{
     window::{WindowConfig, WindowCreation},
 };
 
+#[cfg(feature="baseview")]
+pub use super::app_baseview::Application;
+
 /// Initializes and runs an application with a single window.
 ///
 /// This function creates a new `Application`, sets up a window with the provided view,
@@ -131,94 +134,4 @@ pub fn reopen() {
     Application::send_proxy_event(UserEvent::Reopen {
         has_visible_windows: false,
     });
-}
-
-// For Baseview, we need to be able to create window listeners over Application that
-// can call into &mut self.
-#[cfg(all(feature="baseview", not(feature = "winit")))]
-pub struct Application {
-    pub(super) inner : Arc<RefCell<ApplicationInner>>,
-}
-
-#[cfg(all(feature="baseview", not(feature = "winit")))]
-impl Application {
-    pub fn new() -> Self {
-        Self::new_with_config(AppConfig::default())
-    }
-
-    pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
-        self.handle.event_listener = Some(Box::new(action));
-        self
-    }
-
-    /// Create a new window for the application, if you want multiple windows,
-    /// just chain more window method to the builder.
-    ///
-    /// # Note
-    ///
-    /// Using `None` as a configuration argument is equivalent to using
-    /// `WindowConfig::default()`.
-    pub fn window<V: IntoView + 'static>(
-        mut self,
-        app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
-        config: Option<WindowConfig>,
-    ) -> Self {
-        self.initial_windows.push(WindowCreation {
-            view_fn: Box::new(move |window_id: WindowIdentifier| app_view(window_id).into_any()),
-            config,
-        });
-        self
-    }
-
-    /// Common pre-init tasks
-    pub(crate) fn on_before_run() {
-        Runtime::init_on_ui_thread();
-        // Nudge UI when sync signals are updated from other threads.
-        Runtime::set_sync_effect_waker(|| Application::send_proxy_event(UserEvent::Idle));
-    }
-
-    /// Run a function that handles inbound events or timer wakeups and takes the `ApplicationHandle`.
-    /// The const-generic `USER_EVENTS` determines whether user events are also run - by using const
-    /// generics for this, we ensure that two monomorphized versions of this method are emitted into
-    /// the binary, and we don't pay a price at runtime.  Basically, the same set of calls to handle
-    /// timers and call Runtime::drain_pending_work() surround more than one kind of event processing.
-    ///
-    /// This simply allows multiple windowing-system implementations to share this code without the risk
-    /// of diverging due to having their own copies of it.
-    #[inline(always)]
-    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
-        self.handle.handle_timer(event_loop);
-        f(&mut self.handle, event_loop);
-        if USER_EVENTS {
-            for event in self.receiver.try_iter() {
-                self.handle.handle_user_event(event_loop, event);
-            }
-        }
-        if Runtime::has_pending_work() {
-            Runtime::drain_pending_work();
-        }
-    }
-}
-
-#[cfg(all(feature="baseview", not(feature = "winit")))]
-impl Deref for Application {
-    type Target = ApplicationInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner.borrow()
-    }
-}
-
-#[cfg(all(feature="baseview", not(feature = "winit")))]
-impl DerefMut for Application {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner.borrow_mut()
-    }
-}
-
-#[cfg(feature="baseview")]
-pub(crate) struct ApplicationInner {
-    pub(crate) receiver: Receiver<UserEvent>,
-    pub(crate) handle: ApplicationHandle,
-    pub(crate) initial_windows: Vec<WindowCreation>,
 }

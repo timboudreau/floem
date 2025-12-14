@@ -69,6 +69,25 @@ pub fn find(window : &mut Window<'_>) -> Option<WindowIdentifier> {
     window_id_for(&handle)
 }
 
+impl BaseviewHandles {
+    pub fn id(&self) -> WindowIdentifier {
+        let result = WINDOW_STORAGE.with(|cell| {
+            for (k, v) in cell.borrow().iter() {
+                if self == v {
+                    return Some(k);
+                }
+            }
+            None
+        });
+        result.expect("Called ID before one was assigned")
+    }
+
+    /// For compatibility. Always returns false.
+    pub fn is_maximized(&self) -> bool { false }
+
+    pub fn scale_factor(&self) -> f64 { 1. }
+}
+
 pub fn window_id_for(handle: &BaseviewRawWindowHandle) -> Option<WindowIdentifier> {
     let ours = handle.convert();
     WINDOW_STORAGE.with(|cell| {

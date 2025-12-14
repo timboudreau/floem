@@ -446,3 +446,32 @@ impl floem_renderer::Renderer for Renderer {
         }
     }
 }
+
+// XXX FIXME: This is already implemented for the exact version needed in `windowing`. ???
+// We have two versions in scope, thanks to baseview and a few other things.  That seems
+// to be makiing the compiler give up.
+/*
+#[cfg(feature = "baseview")]
+#[derive(Copy, Clone, Debug)]
+struct WindowWTF(NativeWindow);
+
+#[cfg(feature = "baseview")]
+unsafe impl Send for WindowWTF{}
+
+#[cfg(feature = "baseview")]
+unsafe impl Sync for WindowWTF{}
+
+#[cfg(feature = "baseview")]
+unsafe impl HasRawDisplayHandle for WindowWTF {
+    fn raw_display_handle(&self) -> Result<RawDisplayHandle, raw_window_handle::HandleError> {
+        Ok(self.0.display)
+    }
+}
+
+#[cfg(feature = "baseview")]
+unsafe impl HasRawWindowHandle for WindowWTF {
+    fn raw_window_handle(&self) -> Result<RawWindowHandle, raw_window_handle::HandleError> {
+        Ok(self.0.window)
+    }
+}
+ */

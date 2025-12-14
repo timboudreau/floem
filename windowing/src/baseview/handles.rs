@@ -1,10 +1,15 @@
 #![allow(deprecated)]
-
 use std::ops::Deref;
-
 use baseview::Window;
-use baseview_raw_window_handle::{HasRawWindowHandle as BaseviewHasRawWindowHandle, RawWindowHandle as BaseviewRawWindowHandle, HasRawDisplayHandle as BaseviewHasRawDisplayHandle, RawDisplayHandle as BaseviewRawDisplayHandle};
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle};
+use baseview_raw_window_handle::{
+    HasRawWindowHandle as BaseviewHasRawWindowHandle,
+    RawWindowHandle as BaseviewRawWindowHandle,
+    HasRawDisplayHandle as BaseviewHasRawDisplayHandle,
+    RawDisplayHandle as BaseviewRawDisplayHandle,
+    HasDisplayHandle as BaseviewHasDisplayHandle,
+    HasWindowHandle as BaseviewHasWindowHandle
+};
+use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle};
 
 use crate::baseview::compatibility::Convert;
 
@@ -31,15 +36,15 @@ impl BaseviewHandles {
     }
 }
 
-unsafe impl HasRawDisplayHandle for BaseviewHandles {
-    fn raw_display_handle(&self) -> Result<RawDisplayHandle, raw_window_handle::HandleError> {
-        Ok(self.display)
+impl HasWindowHandle for BaseviewHandles {
+    fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        Ok(unsafe { WindowHandle::borrow_raw(self.window) })
     }
 }
 
-unsafe impl HasRawWindowHandle for BaseviewHandles {
-    fn raw_window_handle(&self) -> Result<RawWindowHandle, raw_window_handle::HandleError> {
-        Ok(self.window)
+impl HasDisplayHandle for BaseviewHandles {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, raw_window_handle::HandleError> {
+        Ok(unsafe { DisplayHandle::borrow_raw(self.display)})
     }
 }
 
@@ -52,6 +57,19 @@ unsafe impl BaseviewHasRawWindowHandle for BaseviewHandles {
 unsafe impl BaseviewHasRawDisplayHandle for BaseviewHandles {
     fn raw_display_handle(&self) -> BaseviewRawDisplayHandle {
         self.display.convert()
+    }
+}
+
+impl BaseviewHasDisplayHandle for BaseviewHandles {
+    fn display_handle(&self) -> Result<baseview_raw_window_handle::DisplayHandle<'_>, baseview_raw_window_handle::HandleError> {
+        Ok(unsafe { baseview_raw_window_handle::DisplayHandle::borrow_raw(self.display.convert()) })
+    }
+}
+
+impl BaseviewHasWindowHandle for BaseviewHandles {
+    fn window_handle(&self) -> Result<baseview_raw_window_handle::WindowHandle<'_>, baseview_raw_window_handle::HandleError> {
+        let h : BaseviewRawWindowHandle = self.window.convert();
+        Ok(unsafe { baseview_raw_window_handle::WindowHandle::borrow_raw(h, baseview_raw_window_handle::ActiveHandle::new()) })
     }
 }
 
