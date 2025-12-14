@@ -117,27 +117,24 @@ impl GpuResources {
 
     // #[cfg(all(feature = "baseview", not(feature = "winit")))]
     #[cfg(feature = "baseview")]
-    pub fn request<F: Fn(windowing::public_api::WindowIdentifier) + 'static, W : HasDisplayHandle + HasWindowHandle + 'static>(
+    pub fn request<F: Fn(windowing::public_api::WindowIdentifier) + 'static/* , W : HasDisplayHandle + HasWindowHandle + 'static*/>(
         on_result: F,
         required_features: wgpu::Features,
-        window: W,
+        // window: W,
+        window: windowing::public_api::BaseviewHandles,
     ) -> Receiver<Result<(Self, wgpu::Surface<'static>), GpuResourceError>> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::from_env().unwrap_or(Backends::all()),
             ..Default::default()
         });
-        let (tx, rx) = sync_channel(1);
-        tx.send(Err(GpuResourceError::AdapterNotFoundError));
-        rx
-
         // Channel passing to do async out-of-band within the winit event_loop since wasm can't
         // execute futures with a return value
-        /*
+
         let (tx, rx) = sync_channel(1);
 
         spawn({
             async move {
-                let surface = match instance.create_surface(Arc::clone(&window)) {
+                let surface = match instance.create_surface(window.clone()) {
                     Ok(surface) => surface,
                     Err(err) => {
                         tx.send(Err(GpuResourceError::SurfaceCreationError(err)))
@@ -183,7 +180,6 @@ impl GpuResources {
             }
         });
         rx
-        */
     }
 }
 
