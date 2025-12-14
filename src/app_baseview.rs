@@ -28,14 +28,14 @@ in an Arc<RefCell>.
 */
 
 pub struct Application {
-    pub(super) inner : Arc<RefCell<ApplicationInner>>,
+    pub(super) inner : ApplicationInner,
 }
 
 thread_local! {
     static ID_TRANSFER_HACK : RefCell<Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)>> = RefCell::new(None);
 }
 
-fn create_one_window(opts : WindowOpenOptions, inner : Arc<RefCell<ApplicationInner>>, view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>) {
+fn create_one_window(opts : WindowOpenOptions, inner : ApplicationInner, view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>) {
     let mut info : Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = None;
     let placeholder = WindowIdentifier::default();
 
@@ -55,7 +55,7 @@ fn create_one_window(opts : WindowOpenOptions, inner : Arc<RefCell<ApplicationIn
         listener
     });
     if let Some((id, handles)) = ID_TRANSFER_HACK.take() {
-        inner.borrow_mut().handle.register_window(id, handles, view_fn);
+        inner.handle.borrow_mut().register_window(id, handles, view_fn);
     }
 }
 
@@ -63,7 +63,7 @@ impl Application {
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn run(mut self) {
         Self::on_before_run();
-        for w in self.inner.borrow_mut().initial_windows() {
+        for w in self.inner.initial_windows() {
             let opts : baseview::WindowOpenOptions = w.config.map(baseview::WindowOpenOptions::from).unwrap_or(WindowOpenOptions {
                 title: "Floem window".into(),
                 size: baseview::Size::new(512., 512.),
@@ -72,17 +72,6 @@ impl Application {
             });
             let copy = self.inner.clone();
             create_one_window(opts, copy, w.view_fn);
-            /*
-
-            Window::open_blocking(opts, |win| {
-                let (window_id, inner) = windowing::public_api::register_window(win);
-                // copy.borrow_mut().handle.register_window(window_id, inner, w.view_fn);
-                OneWindowHandler {
-                    window: window_id,
-                    app: copy,
-                }
-            });
-             */
         }
     }
 
@@ -110,11 +99,11 @@ impl Application {
             });
         }));
         Self {
-            inner : Arc::new(RefCell::new(ApplicationInner {
-                receiver: receiver,
-                handle: handle,
-                initial_windows: Vec::new(),
-            }))
+            inner : ApplicationInner {
+                receiver: Arc::new(receiver),
+                handle: Arc::new(RefCell::new(handle)),
+                initial_windows: Arc::new(RefCell::new(Vec::new())),
+            }
         }
     }
 
@@ -123,8 +112,7 @@ impl Application {
     }
 
     pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
-        let inner : ApplicationInner = Arc::into_inner(self.inner).unwrap().into_inner();
-        self.inner = Arc::new(RefCell::new(inner.on_event(action)));
+        self.inner = self.inner.on_event(action);
         self
     }
 
@@ -140,8 +128,7 @@ impl Application {
         app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
         config: Option<WindowConfig>,
     ) -> Self {
-        let inner : ApplicationInner = Arc::into_inner(self.inner).unwrap().into_inner();
-        self.inner = Arc::new(RefCell::new(inner.window::<V>(app_view, config)));
+        self.inner = self.inner.window::<V>(app_view, config);
         self
     }
 
@@ -162,7 +149,7 @@ impl Application {
     /// of diverging due to having their own copies of it.
     #[inline(always)]
     pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
-        self.inner.borrow_mut().event_processing::<F, USER_EVENTS>(event_loop, f);
+        self.inner.event_processing::<F, USER_EVENTS>(event_loop, f);
     }
 }
 
@@ -171,7 +158,7 @@ impl Application {
 /// doesn't seem immensely reliable).
 pub(crate) struct OneWindowHandler {
     pub window : WindowIdentifier,
-    pub app : Arc<RefCell<ApplicationInner>>,
+    pub app : ApplicationInner,
 }
 
 unsafe impl Send for OneWindowHandler{}
@@ -180,47 +167,35 @@ unsafe impl Sync for OneWindowHandler{}
 impl WindowHandler for OneWindowHandler {
     fn on_frame(&mut self, window: &mut baseview::Window) {
         // self.app.borrow_mut().on_frame(&self.window, window)
-        match self.app.try_borrow_mut() {
-            Ok(mut r) => {
-                r.on_frame(&self.window, window);
-            }
-            Err(e) => {
-                println!("Frame: Cannot borrow: {e}");
-            }
-        }
+        self.app.on_frame(&self.window, window);
     }
 
     fn on_event(&mut self, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
         println!("ON EVENT {:?}", event);
-        match self.app.try_borrow_mut() {
-            Ok(mut r) => {
-                return r.on_baseview_event(&self.window, window, event);
-            }
-            Err(e) => {
-                println!("Event: Cannot borrow: {e} for {:?}", event);
-            }
-        }
-        // self.app.borrow_mut().on_baseview_event(&self.window, window, event)
+        self.app.on_baseview_event(&self.window, window, event);
         baseview::EventStatus::Ignored
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct ApplicationInner {
-    pub(crate) receiver: Receiver<UserEvent>,
-    pub(crate) handle: ApplicationHandle,
-    pub(crate) initial_windows: Vec<WindowCreation>,
+    pub(crate) receiver: Arc<Receiver<UserEvent>>,
+    pub(crate) handle: Arc<RefCell<ApplicationHandle>>,
+    pub(crate) initial_windows: Arc<RefCell<Vec<WindowCreation>>>,
 }
 
 impl ApplicationInner {
 
     fn initial_windows(&mut self) -> Vec<WindowCreation> {
-        let mut v : Vec<WindowCreation> = vec![];
+        let mut v : Arc<RefCell<Vec<WindowCreation>>> = Arc::new(RefCell::new(vec![]));
         std::mem::swap(&mut v, &mut self.initial_windows);
-        v
+        let r : RefCell<Vec<WindowCreation>> = Arc::into_inner(v).unwrap();
+        let v : Vec<WindowCreation> = r.into_inner();
+        return v
     }
 
     pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
-        self.handle.event_listener = Some(Box::new(action));
+        self.handle.borrow_mut().event_listener = Some(Box::new(action));
         self
     }
 
@@ -236,7 +211,7 @@ impl ApplicationInner {
         app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
         config: Option<WindowConfig>,
     ) -> Self {
-        self.initial_windows.push(WindowCreation {
+        self.initial_windows.borrow_mut().push(WindowCreation {
             view_fn: Box::new(move |window_id: WindowIdentifier| app_view(window_id).into_any()),
             config,
         });
@@ -253,11 +228,12 @@ impl ApplicationInner {
     /// of diverging due to having their own copies of it.
     #[inline(always)]
     pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
-        self.handle.handle_timer(event_loop);
-        f(&mut self.handle, event_loop);
+        self.handle.borrow_mut().handle_timer(event_loop);
+        f(&mut self.handle.borrow_mut(), event_loop);
         if USER_EVENTS {
-            for event in self.receiver.try_iter() {
-                self.handle.handle_user_event(event_loop, event);
+            let events : Vec<UserEvent> = self.receiver.as_ref().try_iter().collect();
+            for event in events {
+                self.handle.borrow_mut().handle_user_event(event_loop, event);
             }
         }
         if Runtime::has_pending_work() {
