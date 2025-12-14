@@ -85,7 +85,7 @@ impl BaseviewHandles {
     /// For compatibility. Always returns false.
     pub fn is_maximized(&self) -> bool { false }
 
-    pub fn scale_factor(&self) -> f64 { 1. }
+    pub fn scale_factor(&self) -> f64 { 2. }
 }
 
 pub fn window_id_for(handle: &BaseviewRawWindowHandle) -> Option<WindowIdentifier> {

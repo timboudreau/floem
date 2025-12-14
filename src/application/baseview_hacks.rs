@@ -13,16 +13,17 @@ We should find a better way to do this.
 
 pub(crate) const NO_WINDOW : BaseviewPseudoEventLoop = BaseviewPseudoEventLoop { window : 0 };
 
-// hope we don't have to use this
+// hope we don't have to use this. Welp, we do if we don't want to change the API.
 thread_local! {
     static CURRENT_WINDOW : std::cell::RefCell<BaseviewPseudoEventLoop> = std::cell::RefCell::new(NO_WINDOW);
 }
 
-pub(crate) fn setting_current_window<F: FnOnce()>(window : BaseviewPseudoEventLoop, f : F) {
+pub(crate) fn setting_current_window<F: FnOnce() -> T, T>(window : BaseviewPseudoEventLoop, f : F) -> T {
     CURRENT_WINDOW.with(|cell| {
         cell.replace(window);
-        f();
+        let result = f();
         cell.replace(NO_WINDOW);
+        result
     })
 }
 
@@ -32,6 +33,13 @@ pub(crate) fn current_window() -> BaseviewPseudoEventLoop {
     })
 }
 
+/// This is an ephemeral wrapper for the `Window` that gets passed into our listeners - the only time it
+/// can be accessed is within the closure of a listener method.  Floem has lots of indirection that makes
+/// it difficult to pass around - we are using at as the "event loop" parameter, since that is similar
+/// to what you get from winit - the `ActiveEventLoop` gets passed by reference, but we don't and can't
+/// hold a reference to it outside the closure of an event - so the *access pattern* is the same.
+/// This type does pure evil pointer magic that is very likely thoroughly unsound, but it will do to
+/// get something at least running.
 #[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct BaseviewPseudoEventLoop {
     // This is hideous
@@ -39,6 +47,11 @@ pub(crate) struct BaseviewPseudoEventLoop {
 }
 
 impl BaseviewPseudoEventLoop {
+
+    pub fn is_none(&self) -> bool {
+        self.window == 0
+    }
+
     pub fn close(&self) {
         self.with_mut(|w| w.close());
     }
@@ -63,7 +76,7 @@ impl BaseviewPseudoEventLoop {
         r.gl_context()
     }
 
-    fn with_mut<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {
+    pub(crate) fn with_mut<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {
         if self.window != 0 {
             let r = unsafe { &mut * (self.window as *mut Window<'l>) };
             Some(f(r))
@@ -72,7 +85,7 @@ impl BaseviewPseudoEventLoop {
         }
     }
 
-    fn with_ref<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&Window<'l>) -> T) -> Option<T> {
+    pub(crate) fn with_ref<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&Window<'l>) -> T) -> Option<T> {
         if self.window != 0 {
             let r = unsafe { &*(self.window as *const Window<'l>) };
             Some(f(r))
@@ -81,30 +94,7 @@ impl BaseviewPseudoEventLoop {
         }
     }
 }
-/*
-impl<'l> Deref for BaseviewPseudoEventLoop {
-    type Target = Window<'l>;
 
-    fn deref(&self) -> &Self::Target {
-        &(self.window as *const Window<'l>)
-    }
-}
-
-impl<'l> DerefMut for BaseviewPseudoEventLoop {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut (self.window as *mut Window<'l>);
-    }
-}
- */
-
-// impl<'l> From<&'l mut Window<'l>> for BaseviewPseudoEventLoop {
-//     fn from(value: &'l mut Window<'l>) -> Self {
-//         let pt : *mut Window<'l> = value;
-//         Self {
-//             window : pt as usize,
-//         }
-//     }
-// }
 impl<'l> From<&mut Window<'l>> for BaseviewPseudoEventLoop {
     fn from(value: &mut Window<'l>) -> Self {
         let pt : *mut Window<'l> = value;

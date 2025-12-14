@@ -108,6 +108,7 @@ impl WindowHandle {
         let window_id = window.id();
         let id = ViewId::new();
         let scale = window.scale_factor();
+
         let size = WindowingSystem::logical_surface_size(window.as_ref(), scale);
         let size = scope.create_rw_signal(Size::new(size.width, size.height));
 
@@ -152,8 +153,13 @@ impl WindowHandle {
         let view = WindowView { id };
         id.set_view(view.into_any());
 
+        #[cfg(feature = "baseview")]
+        let w_clone : NativeWindowInner = window.as_ref().clone();
+
         let window: NativeWindow = window.into();
         WindowingSystem::store_window_id_mapping(id, window_id.into(), &window);
+
+        println!("Create window handle, GPU resources is {:?}", gpu_resources);
 
         let paint_state = if let Some(resources) = gpu_resources.clone() {
             let surface = resources
@@ -184,15 +190,17 @@ impl WindowHandle {
             #[cfg(feature = "baseview")]
             let gpu_resources_rx = {
                 let wid = window.id();
-                let ww = Arc::into_inner(window.clone()).expect("Could not unwrap handle");
+
+                // let ww = Arc::into_inner(window.clone()).expect("Could not unwrap handle");
                 GpuResources::request(
                 move |window_id| {
+                    println!("Receive GPU resources for {:?}", window_id);
                     Application::send_proxy_event(UserEvent::GpuResourcesUpdate {
                         window_id: wid,
                     });
                 },
                 required_features,
-                ww,
+                w_clone,
             )
             };
 

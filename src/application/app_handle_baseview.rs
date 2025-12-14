@@ -4,15 +4,7 @@ use super::{
     baseview_hacks::BaseviewPseudoEventLoop,
 };
 use crate::{
-    action::{Timer, TimerToken},
-    app_events::{AppUpdateEvent, UserEvent},
-    ext_event::EXT_EVENT_HANDLER,
-    inspector::Capture,
-    profiler::Profile,
-    window::{WindowConfig, WindowCreation},
-    windows::window_handle::WindowHandle,
-    AppConfig, AppEvent, View,
-    kurbo::Size,
+    action::{Timer, TimerToken}, app_events::{AppUpdateEvent, UserEvent}, application::baseview_hacks, context::PaintState, ext_event::EXT_EVENT_HANDLER, inspector::Capture, kurbo::Size, profiler::Profile, window::{WindowConfig, WindowCreation}, windows::window_handle::WindowHandle, AppConfig, AppEvent, View
 };
 use adapters::WindowSystemTheme;
 use baseview::{*, gl::*};
@@ -32,6 +24,7 @@ impl ApplicationHandle {
     }
 
     pub(crate) fn register_window<F: FnOnce(WindowIdentifier) -> Box<dyn View> + 'static>(&mut self, id : WindowIdentifier, handles : windowing::public_api::NativeWindowInner, view_fn: F) {
+        println!("Register window {:?}", id);
         let handle = WindowHandle::new(Box::new(handles), None, Default::default(), view_fn, false, false, 1.);
         self.window_handles.insert(id, handle);
     }
@@ -81,7 +74,18 @@ impl AppHandlerInternalAPI for ApplicationHandle {
     }
 
     fn handle_updates_for_all_windows(&mut self) {
-        unreachable!("This method cannot be implemented for baseview and should not be reachable.");
+        // unreachable!("This method cannot be implemented for baseview and should not be reachable.");
+        let ww = baseview_hacks::current_window();
+        if !ww.is_none() {
+            println!("handle_updates_for_all_windows gets a hacked window {:?}", ww);
+            let reg_id: Option<WindowIdentifier> = ww.with_mut(|r| {
+                windowing::public_api::find(r)
+            }).unwrap_or(None);
+            if let Some(id) = reg_id {
+                println!("Will try to process updates for this window as {:?}", id);
+                self.handle_updates_for_one_window(&id, &ww);
+            }
+        }
     }
 
     fn handle_timer(&mut self, event_loop: &Self::WindowingSystemEventLoop) {
@@ -184,7 +188,29 @@ impl AppHandlerImpl for ApplicationHandle {
     }
 
     fn handle_gpu_resource_update(&mut self, window_id: WindowIdentifier) {
-        todo!()
+        let handle = self.window_handles.get_mut(&window_id).expect("No window handle for id");
+        if let PaintState::PendingGpuResources {
+            window,
+            rx,
+            font_embolden,
+            renderer,
+        } = &handle.paint_state
+        {
+            let (gpu_resources, surface) = rx.recv().unwrap().unwrap();
+            let renderer = crate::renderer::Renderer::new(
+                window.clone(),
+                gpu_resources.clone(),
+                surface,
+                renderer.scale(),
+                renderer.size(),
+                *font_embolden,
+            );
+            self.gpu_resources = Some(gpu_resources);
+            handle.paint_state = PaintState::Initialized { renderer };
+            handle.init_renderer(self.gpu_resources.clone());
+        } else {
+            panic!("Sent a gpu resource update after it had already been initialized");
+        }
     }
 
     fn handle_exit(&mut self, event_loop: &Self::WindowingSystemEventLoop) {

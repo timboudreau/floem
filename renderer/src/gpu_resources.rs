@@ -123,6 +123,7 @@ impl GpuResources {
         // window: W,
         window: windowing::public_api::BaseviewHandles,
     ) -> Receiver<Result<(Self, wgpu::Surface<'static>), GpuResourceError>> {
+        println!("GPU resources request for {:?}", window);
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::from_env().unwrap_or(Backends::all()),
             ..Default::default()

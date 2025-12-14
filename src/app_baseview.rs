@@ -5,6 +5,7 @@ use crate::{app_events::UserEvent, application::{
 use super::app::*;
 use baseview::{Window, WindowHandler, WindowOpenOptions};
 use floem_reactive::Runtime;
+use parking_lot::Mutex;
 use windowing::public_api::WindowIdentifier;
 
 #[cfg(feature = "crossbeam")]
@@ -31,8 +32,22 @@ pub struct Application {
     pub(super) inner : ApplicationInner,
 }
 
+type ViewFn = Box<dyn FnOnce(WindowIdentifier) -> AnyView>;
 thread_local! {
     static ID_TRANSFER_HACK : RefCell<Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)>> = RefCell::new(None);
+    static INNER_TRANSFER : RefCell<Option<(ApplicationInner, ViewFn)>> = RefCell::new(None);
+}
+
+fn do_the_thing() {
+    if let Some((id, handles)) = ID_TRANSFER_HACK.take() {
+        if let Some((inner, view_fn)) = INNER_TRANSFER.take() {
+            inner.handle.borrow_mut().register_window(id, handles, view_fn);
+        } else {
+            println!("NO INNER");
+        }
+    } else {
+        println!("NO TRANSFER");
+    }
 }
 
 fn create_one_window(opts : WindowOpenOptions, inner : ApplicationInner, view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>) {
@@ -44,20 +59,27 @@ fn create_one_window(opts : WindowOpenOptions, inner : ApplicationInner, view_fn
         app: inner.clone(),
     };
 
+    INNER_TRANSFER.with(|i| {
+        i.replace(Some((inner, view_fn)));
+    });
+
+    // Well, shoot, this method never returns.
     Window::open_blocking(opts, |win| {
         let (window_id, inner) = windowing::public_api::register_window(win);
-        let ifo:Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = Some((window_id.clone(), inner.clone()));
-        ID_TRANSFER_HACK.with(|v| {
-            v.replace(ifo);
-        });
-        listener.window = window_id;
-        // listener.app.borrow_mut().handle.register_window(window_id, inner, view_fn);
-        listener
+        println!("Opened window as {:?}", window_id);
+        setting_current_window(BaseviewPseudoEventLoop::from(win), || {
+            let ifo:Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = Some((window_id.clone(), inner.clone()));
+            ID_TRANSFER_HACK.with(|v| {
+                v.replace(ifo);
+            });
+            listener.window = window_id;
+            do_the_thing();
+            listener
+        })
     });
-    if let Some((id, handles)) = ID_TRANSFER_HACK.take() {
-        inner.handle.borrow_mut().register_window(id, handles, view_fn);
-    }
 }
+
+static PENDING_USER_EVENTS: Mutex<Option<Sender<UserEvent>>> = Mutex::new(None);
 
 impl Application {
     #[cfg_attr(debug_assertions, track_caller)]
@@ -76,7 +98,10 @@ impl Application {
     }
 
     pub(crate) fn send_proxy_event(event: UserEvent) {
-        todo!("Send proxy event not implemented: {:?}", event);
+        if let Some(mut sender) = PENDING_USER_EVENTS.lock().as_ref() {
+            println!("Enqueue proxy event: {:?}", event);
+            let _ = sender.send(event);
+        }
     }
 
     pub fn new_with_config(config: AppConfig) -> Self {
@@ -86,6 +111,8 @@ impl Application {
         crate::app_delegate::set_app_delegate();
 
         let (sender, receiver) = channel();
+
+        *PENDING_USER_EVENTS.lock() = Some(sender);
 
         // Pending - any baseview clipboard init
         let handle = ApplicationHandle::new(config);
@@ -171,7 +198,7 @@ impl WindowHandler for OneWindowHandler {
     }
 
     fn on_event(&mut self, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        println!("ON EVENT {:?}", event);
+        println!("ON EVENT {:?} id {:?}", event, self.window);
         self.app.on_baseview_event(&self.window, window, event);
         baseview::EventStatus::Ignored
     }
