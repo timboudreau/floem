@@ -1,5 +1,10 @@
-use crate::{app_events::UserEvent, application::spi::AppHandlerInternalAPI, AppConfig};
-
+use crate::{app_events::UserEvent,
+    application::{
+        app_handle::ApplicationHandle,
+        spi::AppHandlerInternalAPI
+    },
+    AppConfig
+};
 use super::app::*;
 use baseview::WindowHandler;
 use windowing::public_api::WindowIdentifier;
@@ -41,31 +46,38 @@ impl Application {
             });
         }));
         Self {
-            receiver,
-            handle,
-            initial_windows: Vec::new(),
+            inner : Arc::new(RefCell::new(ApplicationInner {
+                receiver: receiver,
+                handle: handle,
+                initial_windows: Vec::new(),
+            }))
         }
     }
 
     fn on_frame(&mut self, id : &WindowIdentifier, window: &mut baseview::Window) {
-        self.event_processing::<_, true>(Some(window), move |handle, w, _| {
-            handle.handle_updates_for_all_windows();
+        let hack : BaseviewPseudoEventLoop::from(w);
+        self.event_processing::<_, true>(hack, move |handle, w| {
+            handle.with_window_handle_for(id, move |h| {
+                handle.handle_updates_for_one_window(id, h, &w);
+            });
         });
     }
 
     fn on_baseview_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        self.event_processing::<_, false>(Some(window), move |handle, window_opt| {
+        let hack : BaseviewPseudoEventLoop::from(w);
+        self.event_processing::<_, false>(hack, move |handle, window_opt| {
             handle.handle_window_event(window_id.into(), event, window_opt);
         });
+        baseview::EventStatus::Captured // pending, do we know?
     }
 }
 
 /// Baseview gives nothing to grab hold of to easily figure out *which* window is being painted except the
 /// identity of the handler being called (well, we could use the raw window handle as identity, but that
 /// doesn't seem immensely reliable).
-struct OneWindowHandler {
-    window : WindowIdentifier,
-    app : Arc<RefCell<Application>>,
+pub(crate) struct OneWindowHandler {
+    pub window : WindowIdentifier,
+    pub app : Arc<RefCell<Application>>,
 }
 
 impl WindowHandler for OneWindowHandler {

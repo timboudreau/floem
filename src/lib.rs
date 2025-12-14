@@ -262,7 +262,6 @@ pub use taffy;
 pub use ui_events;
 pub use view::{AnyView, IntoView, View, default_compute_layout, recursively_layout_view};
 pub use view_state::{Stack, StackOffset};
-#[cfg(all(feature = "winit", not(feature = "baseview")))]
 pub use window::{close_window, new_window};
 pub use windowing::public_api::*;
 

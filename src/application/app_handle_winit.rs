@@ -1,5 +1,5 @@
 use crate::{
-    action::{Timer, TimerToken},
+    action::Timer,
     app_events::UserEvent,
     application::{
         app_handle::ApplicationHandle,
@@ -186,6 +186,17 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             font_embolden,
         );
         self.window_handles.insert(window_id.into(), window_handle);
+    }
+
+    fn remove_timer(
+        &mut self,
+        timer: &crate::action::TimerToken,
+        event_loop: &Self::WindowingSystemEventLoop,
+    ) {
+        self.timers.remove(timer);
+        if self.timers.is_empty() {
+            event_loop.set_control_flow(ControlFlow::Wait);
+        }
     }
 
     fn handle_user_event(&mut self, event_loop: &Self::WindowingSystemEventLoop, event: UserEvent) {
@@ -393,13 +404,6 @@ impl AppHandlerImpl for ApplicationHandle {
     fn request_timer(&mut self, timer: Timer, event_loop: &dyn ActiveEventLoop) {
         self.timers.insert(timer.token, timer);
         self.fire_timer(event_loop);
-    }
-
-    fn remove_timer(&mut self, timer: &TimerToken, event_loop: &dyn ActiveEventLoop) {
-        self.timers.remove(timer);
-        if self.timers.is_empty() {
-            event_loop.set_control_flow(ControlFlow::Wait);
-        }
     }
 
     fn fire_timer(&mut self, event_loop: &dyn ActiveEventLoop) {

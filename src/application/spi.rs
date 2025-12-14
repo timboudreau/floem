@@ -29,7 +29,7 @@ use adapters::WindowSystemTheme;
 use floem_reactive::{SignalUpdate, WriteSignal};
 use muda::MenuId;
 use std::rc::Rc;
-use windowing::public_api::WindowIdentifier;
+use windowing::{internal_api::{WindowingBackend, WindowingSystem}, public_api::WindowIdentifier};
 
 /// Functionality that can be implemented once and shared for both winit and baseview, so we can get the surface
 /// area of `AppHandlerInternalAPI` and `AppHandlerImpl` down to *just* that which needs to be uniquely implemented for each.
@@ -79,6 +79,7 @@ pub(crate) trait AppHandlerInternalAPI: AppHandlerCommon {
         config: WindowConfig,
     );
 
+    // this was in the API, but called by nothing, and in fact, not practically implementable for baseview
     fn idle(&mut self) {
         let ext_events = { std::mem::take(&mut *EXT_EVENT_HANDLER.queue.lock()) };
         for trigger in ext_events {
@@ -88,6 +89,14 @@ pub(crate) trait AppHandlerInternalAPI: AppHandlerCommon {
     }
 
     fn handle_updates_for_all_windows(&mut self);
+
+    #[allow(unused)]
+    /// This is needed for baseview, where we can only process events for a window within the closure of a callback
+    fn handle_updates_for_one_window(&mut self, window : &WindowIdentifier, handle : &mut WindowHandle, _: &Self::WindowingSystemEventLoop) {
+        handle.process_update();
+        while WindowingSystem::process_window_updates(window) {}
+    }
+
     fn handle_timer(&mut self, event_loop: &Self::WindowingSystemEventLoop);
     fn handle_user_event(&mut self, event_loop: &Self::WindowingSystemEventLoop, event: UserEvent);
     fn handle_window_event(
@@ -96,6 +105,8 @@ pub(crate) trait AppHandlerInternalAPI: AppHandlerCommon {
         event: Self::WindowingSystemWindowEvent,
         event_loop: &Self::WindowingSystemEventLoop,
     );
+
+    fn remove_timer(&mut self, timer: &TimerToken, event_loop: &Self::WindowingSystemEventLoop);
 }
 
 /// Implementation logic for `ApplicationHandler` - this is the set of *internal* calls which must be implemented differently
@@ -108,7 +119,6 @@ pub(super) trait AppHandlerImpl: AppHandlerInternalAPI {
     );
 
     fn request_timer(&mut self, timer: Timer, event_loop: &Self::WindowingSystemEventLoop);
-    fn remove_timer(&mut self, timer: &TimerToken, event_loop: &Self::WindowingSystemEventLoop);
     fn fire_timer(&mut self, event_loop: &Self::WindowingSystemEventLoop);
     fn handle_gpu_resource_update(&mut self, window_id: WindowIdentifier);
     fn handle_exit(&mut self, event_loop: &Self::WindowingSystemEventLoop);

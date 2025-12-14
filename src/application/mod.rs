@@ -8,6 +8,9 @@ mod app_handle_winit;
 #[cfg(feature = "baseview")]
 mod app_handle_baseview;
 
+#[cfg(feature = "baseview")]
+mod baseview_hacks;
+
 // OS-specific window configuration, platform-dependent:
 
 // os_mac contains some non-wasm specific code, so leave os/feature constraints inside it
