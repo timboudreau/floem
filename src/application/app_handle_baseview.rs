@@ -30,6 +30,11 @@ impl ApplicationHandle {
             panic!("No window handle for {:?}", id);
         }
     }
+
+    pub(crate) fn register_window<F: FnOnce(WindowIdentifier) -> Box<dyn View> + 'static>(&mut self, id : WindowIdentifier, handles : windowing::public_api::NativeWindowInner, view_fn: F) {
+        let handle = WindowHandle::new(Box::new(handles), None, Default::default(), view_fn, false, false, 1.);
+        self.window_handles.insert(id, handle);
+    }
 }
 
 impl AppHandlerInternalAPI for ApplicationHandle {
@@ -45,11 +50,11 @@ impl AppHandlerInternalAPI for ApplicationHandle {
     }
 
     fn new(config: crate::AppConfig) -> Self {
-        todo!()
+        Self::from(config)
     }
 
     fn remove_timer(&mut self, timer: &TimerToken, event_loop: &Self::WindowingSystemEventLoop) {
-        todo!()
+        self.timers.remove(timer);
     }
 
     fn new_window(

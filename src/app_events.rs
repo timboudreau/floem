@@ -16,6 +16,7 @@ pub enum AppEvent {
     Reopen { has_visible_windows: bool },
 }
 
+#[derive(Debug)]
 pub(crate) enum UserEvent {
     AppUpdate,
     Idle,

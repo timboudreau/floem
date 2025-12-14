@@ -61,15 +61,6 @@ impl BaseviewPseudoEventLoop {
     pub fn gl_context(&self) -> Option<&baseview::gl::GlContext> {
         let r = unsafe { &*(self.window as *const Window<'_>) };
         r.gl_context()
-        /*
-        let op : Option<Option<&baseview::gl::GlContext>> = self.with_ref(|w| {
-            w.gl_context()
-        });
-        if let Some(op) = op {
-            return op
-        }
-        None
-         */
     }
 
     fn with_mut<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {

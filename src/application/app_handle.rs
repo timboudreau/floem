@@ -28,6 +28,12 @@ pub(crate) struct ApplicationHandle {
     pub(crate) config: AppConfig,
 }
 
+impl From<AppConfig> for ApplicationHandle {
+    fn from(config: AppConfig) -> Self {
+        Self { window_handles: Default::default(), timers: Default::default(), event_listener: Default::default(), gpu_resources: Default::default(), config }
+    }
+}
+
 /// Functionality that is not specific to a windowing system and can be implemented once for both, rather
 /// than duplicate code.
 ///

@@ -1,8 +1,9 @@
 use adapters::{WindowResizeDirection, WindowSystemTheme};
 use peniko::kurbo::{Point, Size, Vec2};
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use windowing::public_api::NativeWindow;
 use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
+use crate::application::baseview_hacks::current_window;
 
 impl WindowHandleNative for WindowHandle {
     fn set_cursor(&mut self) {
@@ -14,7 +15,7 @@ impl WindowHandleNative for WindowHandle {
     }
 
     fn raw_window_handle(&self) -> RawWindowHandle {
-        todo!()
+        self.window.window
     }
 
     fn set_window_theme(&self, theme : Option<WindowSystemTheme>) {
@@ -46,7 +47,7 @@ impl WindowHandleNative for WindowHandle {
     }
 
     fn focus_window(&mut self) {
-
+        current_window().focus();
     }
 
     fn drag_window(&mut self) {

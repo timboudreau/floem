@@ -1,9 +1,9 @@
 use crate::{app_events::UserEvent, application::{
-        app_handle::ApplicationHandle, baseview_hacks::BaseviewPseudoEventLoop, spi::AppHandlerInternalAPI
+        app_handle::ApplicationHandle, baseview_hacks::{setting_current_window, BaseviewPseudoEventLoop}, spi::AppHandlerInternalAPI
     }, window::{WindowConfig, WindowCreation}, AppConfig, AppEvent, IntoView
 };
 use super::app::*;
-use baseview::WindowHandler;
+use baseview::{Window, WindowHandler, WindowOpenOptions};
 use floem_reactive::Runtime;
 use windowing::public_api::WindowIdentifier;
 
@@ -16,7 +16,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{Receiver, Sender};
 
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, sync::Arc, thread};
+use crate::AnyView;
 
 type EventLoopType = <ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop;
 
@@ -30,15 +31,63 @@ pub struct Application {
     pub(super) inner : Arc<RefCell<ApplicationInner>>,
 }
 
+thread_local! {
+    static ID_TRANSFER_HACK : RefCell<Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)>> = RefCell::new(None);
+}
+
+fn create_one_window(opts : WindowOpenOptions, inner : Arc<RefCell<ApplicationInner>>, view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>) {
+    let mut info : Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = None;
+    let placeholder = WindowIdentifier::default();
+
+    let mut listener = OneWindowHandler {
+        window: placeholder,
+        app: inner.clone(),
+    };
+
+    Window::open_blocking(opts, |win| {
+        let (window_id, inner) = windowing::public_api::register_window(win);
+        let ifo:Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = Some((window_id.clone(), inner.clone()));
+        ID_TRANSFER_HACK.with(|v| {
+            v.replace(ifo);
+        });
+        listener.window = window_id;
+        // listener.app.borrow_mut().handle.register_window(window_id, inner, view_fn);
+        listener
+    });
+    if let Some((id, handles)) = ID_TRANSFER_HACK.take() {
+        inner.borrow_mut().handle.register_window(id, handles, view_fn);
+    }
+}
+
 impl Application {
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn run(mut self) {
         Self::on_before_run();
-        todo!()
+        for w in self.inner.borrow_mut().initial_windows() {
+            let opts : baseview::WindowOpenOptions = w.config.map(baseview::WindowOpenOptions::from).unwrap_or(WindowOpenOptions {
+                title: "Floem window".into(),
+                size: baseview::Size::new(512., 512.),
+                scale: baseview::WindowScalePolicy::SystemScaleFactor,
+                gl_config: None,
+            });
+            let copy = self.inner.clone();
+            create_one_window(opts, copy, w.view_fn);
+            /*
+
+            Window::open_blocking(opts, |win| {
+                let (window_id, inner) = windowing::public_api::register_window(win);
+                // copy.borrow_mut().handle.register_window(window_id, inner, w.view_fn);
+                OneWindowHandler {
+                    window: window_id,
+                    app: copy,
+                }
+            });
+             */
+        }
     }
 
     pub(crate) fn send_proxy_event(event: UserEvent) {
-        todo!()
+        todo!("Send proxy event not implemented: {:?}", event);
     }
 
     pub fn new_with_config(config: AppConfig) -> Self {
@@ -125,13 +174,34 @@ pub(crate) struct OneWindowHandler {
     pub app : Arc<RefCell<ApplicationInner>>,
 }
 
+unsafe impl Send for OneWindowHandler{}
+unsafe impl Sync for OneWindowHandler{}
+
 impl WindowHandler for OneWindowHandler {
     fn on_frame(&mut self, window: &mut baseview::Window) {
-        self.app.borrow_mut().on_frame(&self.window, window)
+        // self.app.borrow_mut().on_frame(&self.window, window)
+        match self.app.try_borrow_mut() {
+            Ok(mut r) => {
+                r.on_frame(&self.window, window);
+            }
+            Err(e) => {
+                println!("Frame: Cannot borrow: {e}");
+            }
+        }
     }
 
     fn on_event(&mut self, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        self.app.borrow_mut().on_baseview_event(&self.window, window, event)
+        println!("ON EVENT {:?}", event);
+        match self.app.try_borrow_mut() {
+            Ok(mut r) => {
+                return r.on_baseview_event(&self.window, window, event);
+            }
+            Err(e) => {
+                println!("Event: Cannot borrow: {e} for {:?}", event);
+            }
+        }
+        // self.app.borrow_mut().on_baseview_event(&self.window, window, event)
+        baseview::EventStatus::Ignored
     }
 }
 
@@ -142,6 +212,13 @@ pub(crate) struct ApplicationInner {
 }
 
 impl ApplicationInner {
+
+    fn initial_windows(&mut self) -> Vec<WindowCreation> {
+        let mut v : Vec<WindowCreation> = vec![];
+        std::mem::swap(&mut v, &mut self.initial_windows);
+        v
+    }
+
     pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
         self.handle.event_listener = Some(Box::new(action));
         self
@@ -190,15 +267,19 @@ impl ApplicationInner {
 
     fn on_frame(&mut self, id : &WindowIdentifier, window: &mut baseview::Window) {
         let hack = BaseviewPseudoEventLoop::from(window);
-        self.event_processing::<_, true>(&hack, move |handle, w| {
-            handle.handle_updates_for_one_window(id, &hack);
-        });
+        setting_current_window(hack, || {
+            self.event_processing::<_, true>(&hack, move |handle, w| {
+                handle.handle_updates_for_one_window(id, &hack);
+            });
+        })
     }
 
     fn on_baseview_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
         let hack = BaseviewPseudoEventLoop::from(window);
-        self.event_processing::<_, false>(&hack, move |handle, window_opt| {
-            handle.handle_window_event(id.to_owned(), event, window_opt);
+        setting_current_window(hack, || {
+            self.event_processing::<_, false>(&hack, move |handle, window_opt| {
+                handle.handle_window_event(id.to_owned(), event, window_opt);
+            });
         });
         baseview::EventStatus::Captured // pending, do we know?
     }

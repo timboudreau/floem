@@ -55,12 +55,12 @@ pub fn update_registration<'a>(id: WindowIdentifier, window : &mut Window<'a>) {
     });
 }
 
-pub fn register_window<'a>(window: &mut Window<'a>) -> WindowIdentifier {
+pub fn register_window<'a>(window: &mut Window<'a>) -> (WindowIdentifier, BaseviewHandles) {
     let handles = BaseviewHandles {
         window : window.raw_window_handle().convert(),
         display : window.raw_display_handle().convert(),
     };
-    WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(handles))
+    (WINDOW_STORAGE.with(|cell| cell.borrow_mut().insert(handles.to_owned())), handles)
 }
 
 /// Not sure if we will need reverse lookup, but it is helpful for debugging

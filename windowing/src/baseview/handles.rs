@@ -15,8 +15,8 @@ use crate::baseview::compatibility::Convert;
 
 #[derive(Copy, Clone, PartialEq, Debug, Hash)]
 pub struct BaseviewHandles {
-    pub(super) window : RawWindowHandle,
-    pub(super) display : RawDisplayHandle,
+    pub window : RawWindowHandle,
+    pub display : RawDisplayHandle,
 }
 
 impl Eq for BaseviewHandles {}

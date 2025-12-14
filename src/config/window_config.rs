@@ -34,6 +34,15 @@ pub struct WindowConfig {
     pub(crate) web_config: Option<WebWindowConfig>,
 }
 
+#[cfg(all(feature = "baseview", not(feature = "winit")))]
+impl From<WindowConfig> for baseview::WindowOpenOptions {
+    fn from(value: WindowConfig) -> Self {
+        let sz = value.initial_size();
+        let size = baseview::Size::new(sz.width, sz.height);
+        baseview::WindowOpenOptions { title: value.title, size: size, scale: baseview::WindowScalePolicy::SystemScaleFactor, gl_config: None }
+    }
+}
+
 impl Default for WindowConfig {
     fn default() -> Self {
         Self {
@@ -69,6 +78,11 @@ impl Default for WindowConfig {
 }
 
 impl WindowConfig {
+    #[cfg(all(feature = "baseview", not(feature = "winit")))]
+    fn initial_size(&self) -> Size {
+        self.size.unwrap_or_else(||self.min_size.unwrap_or_else(||self.max_size.unwrap_or(Size::new(512., 512.))))
+    }
+
     /// Requests the window to be of specific dimensions.
     ///
     /// If this is not set, some platform-specific dimensions will be used.
