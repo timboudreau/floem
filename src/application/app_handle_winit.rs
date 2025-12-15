@@ -419,6 +419,8 @@ impl AppHandlerImpl for ApplicationHandle {
     }
 
     fn handle_gpu_resource_update(&mut self, window_id: WindowIdentifier) {
+        // Pending: This could probably be moved into common - it is identical now in
+        // both implementations.
         let handle = self.window_handles.get_mut(&window_id).unwrap();
         if let PaintState::PendingGpuResources {
             window,

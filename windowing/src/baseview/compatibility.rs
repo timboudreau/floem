@@ -57,12 +57,8 @@ impl Convert<RawWindowHandle> for BaseviewRawWindowHandle {
             }
             BaseviewRawWindowHandle::AppKit(app_kit_window_handle) => {
                 let mut result = raw_window_handle::AppKitWindowHandle::new(
-                    NonNull::new(app_kit_window_handle.ns_window).unwrap(),
+                    NonNull::new(app_kit_window_handle.ns_view).expect("Got a null ns_window pointer"),
                 );
-                if !app_kit_window_handle.ns_view.is_null() {
-                    result.ns_view =
-                        unsafe { NonNull::new_unchecked(app_kit_window_handle.ns_view) }
-                }
                 RawWindowHandle::AppKit(result)
             }
             // pending: implement at least these

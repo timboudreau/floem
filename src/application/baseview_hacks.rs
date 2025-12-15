@@ -20,9 +20,10 @@ thread_local! {
 
 pub(crate) fn setting_current_window<F: FnOnce() -> T, T>(window : BaseviewPseudoEventLoop, f : F) -> T {
     CURRENT_WINDOW.with(|cell| {
-        cell.replace(window);
+        // This can be called reentrantly while creating a new window.
+        let prev = cell.replace(window);
         let result = f();
-        cell.replace(NO_WINDOW);
+        cell.replace(prev);
         result
     })
 }
@@ -40,10 +41,16 @@ pub(crate) fn current_window() -> BaseviewPseudoEventLoop {
 /// hold a reference to it outside the closure of an event - so the *access pattern* is the same.
 /// This type does pure evil pointer magic that is very likely thoroughly unsound, but it will do to
 /// get something at least running.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 pub(crate) struct BaseviewPseudoEventLoop {
     // This is hideous
     window : usize,
+}
+
+impl std::fmt::Debug for BaseviewPseudoEventLoop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("Window({:#x})", self.window).as_str())
+    }
 }
 
 impl BaseviewPseudoEventLoop {

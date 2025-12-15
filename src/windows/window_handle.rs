@@ -664,6 +664,8 @@ impl WindowHandle {
     }
 
     pub(crate) fn render_frame(&mut self, gpu_resources: Option<GpuResources>) {
+        #[cfg(feature = "baseview")]
+        println!("Render frame for {:?} in {:?}", self.window_id, crate::application::baseview_hacks::current_window());
         // Processes updates scheduled on this frame.
         for update in mem::take(&mut self.window_state.scheduled_updates) {
             match update {

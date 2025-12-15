@@ -16,16 +16,9 @@ use ui_events_baseview::WindowEventTranslation;
 use windowing::public_api::WindowIdentifier;
 
 impl ApplicationHandle {
-    pub(crate) fn with_window_handle_for<F : FnOnce(&mut WindowHandle)>(&mut self, id : &WindowIdentifier, f : F) {
-        if let Some(h) = self.window_handles.get_mut(id) {
-            f(h)
-        } else {
-            panic!("No window handle for {:?}", id);
-        }
-    }
 
     pub(crate) fn register_window<F: FnOnce(WindowIdentifier) -> Box<dyn View> + 'static>(&mut self, id : WindowIdentifier, handles : windowing::public_api::NativeWindowInner, view_fn: F) {
-        println!("Register window {:?}", id);
+        println!("Register window {:?} for {:?}", id, handles);
         let handle = WindowHandle::new(Box::new(handles), None, Default::default(), view_fn, false, false, 1.);
         self.window_handles.insert(id, handle);
     }
@@ -70,15 +63,18 @@ impl AppHandlerInternalAPI for ApplicationHandle {
 
         // Stores the view_fn in a thread_local so LateRegisteringWindowHandler::new() can grab it
         // without the compiler complaining that it can't be moved into the callback below (if we
-        // are running on some other thread, it will find nothing there and panic.)
+        // are running on some other thread, it will find nothing there and panic; but also, this
+        // method can only be called from the event thread in a window callback, and the same goes
+        // [at least on mac os?] for window creation).
         on_before_attach_new_child_window(view_fn);
-        let handle = event_loop.with_ref(|parent_window| {
+        let _handle = event_loop.with_ref(|parent_window| {
             Window::open_parented(parent_window, opts, |child_window| {
                 println!("In callback for creating child window");
-                // app_attach_new_child_window(child_window)
+
                 LateRegisteringWindowHandler::new()
             })
         });
+
         // We might just be able to do this deriving BaseviewHandles from the returned WindowHandle.
         //
         // Nope, they only have a window handle, not a display handle, and we need both (though Mac OS
@@ -112,6 +108,7 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         self.internal_handle_user_event(event_loop, event);
     }
 
+    #[cfg_attr(debug_assertions, track_caller)]
     fn handle_window_event(
         &mut self,
         window_id: WindowIdentifier,
