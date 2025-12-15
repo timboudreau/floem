@@ -55,6 +55,7 @@ pub fn update_registration<'a>(id: WindowIdentifier, window : &mut Window<'a>) {
     });
 }
 
+#[cfg_attr(debug_assertions, track_caller)]
 pub fn register_window<'a>(window: &mut Window<'a>) -> (WindowIdentifier, BaseviewHandles) {
     let handles = BaseviewHandles {
         window : window.raw_window_handle().convert(),

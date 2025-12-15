@@ -19,6 +19,15 @@ pub struct BaseviewHandles {
     pub display : RawDisplayHandle,
 }
 
+/*
+impl From<&baseview::WindowHandle> for BaseviewHandles {
+    fn from(value: &baseview::WindowHandle) -> Self {
+        // Sigh, baseview::WindowHandle only has a RawWindowHandle, no DisplayHandle.
+        todo!()
+    }
+}
+ */
+
 impl Eq for BaseviewHandles {}
 
 impl Deref for BaseviewHandles {

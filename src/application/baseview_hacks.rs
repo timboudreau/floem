@@ -81,6 +81,7 @@ impl BaseviewPseudoEventLoop {
             let r = unsafe { &mut * (self.window as *mut Window<'l>) };
             Some(f(r))
         } else {
+            println!("BaseviewPseudo called with no referent");
             None
         }
     }
@@ -90,6 +91,7 @@ impl BaseviewPseudoEventLoop {
             let r = unsafe { &*(self.window as *const Window<'l>) };
             Some(f(r))
         } else {
+            println!("BaseviewPseudo called with no referent");
             None
         }
     }

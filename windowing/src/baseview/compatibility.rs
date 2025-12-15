@@ -38,6 +38,7 @@ impl Convert<BaseviewRawWindowHandle> for RawWindowHandle {
 
 #[allow(unused)]
 impl Convert<RawWindowHandle> for BaseviewRawWindowHandle {
+    #[cfg_attr(debug_assertions, track_caller)]
     fn convert(&self) -> RawWindowHandle {
         match self {
             BaseviewRawWindowHandle::UiKit(ui_kit_window_handle) => {

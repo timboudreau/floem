@@ -5,6 +5,7 @@ use windowing::public_api::NativeWindow;
 use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
 use crate::application::baseview_hacks::current_window;
 
+// Basically none of this is implementable over baseview windows.
 impl WindowHandleNative for WindowHandle {
     fn set_cursor(&mut self) {
 

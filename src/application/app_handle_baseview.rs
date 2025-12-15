@@ -4,12 +4,13 @@ use super::{
     baseview_hacks::BaseviewPseudoEventLoop,
 };
 use crate::{
-    action::{Timer, TimerToken}, app_events::{AppUpdateEvent, UserEvent}, application::baseview_hacks, context::PaintState, ext_event::EXT_EVENT_HANDLER, inspector::Capture, kurbo::Size, profiler::Profile, window::{WindowConfig, WindowCreation}, windows::window_handle::WindowHandle, AppConfig, AppEvent, View
+    action::{Timer, TimerToken}, app_baseview::{on_before_attach_new_child_window, LateRegisteringWindowHandler}, app_events::{AppUpdateEvent, UserEvent}, application::baseview_hacks, context::PaintState, ext_event::EXT_EVENT_HANDLER, inspector::Capture, kurbo::Size, profiler::Profile, window::{WindowConfig, WindowCreation}, windows::window_handle::WindowHandle, AppConfig, AppEvent, View
 };
 use adapters::WindowSystemTheme;
 use baseview::{*, gl::*};
 use floem_reactive::{SignalUpdate, WriteSignal};
 use muda::MenuId;
+use ui_events::pointer::PointerEvent;
 use std::rc::Rc;
 use ui_events_baseview::WindowEventTranslation;
 use windowing::public_api::WindowIdentifier;
@@ -39,7 +40,7 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         creation: crate::window::WindowCreation,
         event_loop: &Self::WindowingSystemEventLoop,
     ) {
-        todo!()
+        self.new_window(event_loop, creation.view_fn, None, creation.config.unwrap_or_default());
     }
 
     fn new(config: crate::AppConfig) -> Self {
@@ -66,23 +67,34 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             scale: baseview::WindowScalePolicy::SystemScaleFactor, // pending, set?
             gl_config: None, // XXX use in some cases?
         };
-        // baseview::Window::open_blocking(opts, |win| {
 
-        // });
-
-        todo!()
+        // Stores the view_fn in a thread_local so LateRegisteringWindowHandler::new() can grab it
+        // without the compiler complaining that it can't be moved into the callback below (if we
+        // are running on some other thread, it will find nothing there and panic.)
+        on_before_attach_new_child_window(view_fn);
+        let handle = event_loop.with_ref(|parent_window| {
+            Window::open_parented(parent_window, opts, |child_window| {
+                println!("In callback for creating child window");
+                // app_attach_new_child_window(child_window)
+                LateRegisteringWindowHandler::new()
+            })
+        });
+        // We might just be able to do this deriving BaseviewHandles from the returned WindowHandle.
+        //
+        // Nope, they only have a window handle, not a display handle, and we need both (though Mac OS
+        // DisplayHandle is a no-op).
     }
 
     fn handle_updates_for_all_windows(&mut self) {
         // unreachable!("This method cannot be implemented for baseview and should not be reachable.");
         let ww = baseview_hacks::current_window();
         if !ww.is_none() {
-            println!("handle_updates_for_all_windows gets a hacked window {:?}", ww);
+            // println!("handle_updates_for_all_windows gets a hacked window {:?}", ww);
             let reg_id: Option<WindowIdentifier> = ww.with_mut(|r| {
                 windowing::public_api::find(r)
             }).unwrap_or(None);
             if let Some(id) = reg_id {
-                println!("Will try to process updates for this window as {:?}", id);
+                // println!("Will try to process updates for this window as {:?}", id);
                 self.handle_updates_for_one_window(&id, &ww);
             }
         }
@@ -116,6 +128,7 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             .reduce(window_handle.scale, &event)
         {
             Some(WindowEventTranslation::Keyboard(ke)) => {
+                println!("Forward xlated key event : {:?}", ke);
                 window_handle.key_event(ke);
                 // FIXME:
                 // if let WindowEvent::KeyboardInput { is_synthetic, .. } = event {
@@ -125,6 +138,9 @@ impl AppHandlerInternalAPI for ApplicationHandle {
                 // }
             }
             Some(WindowEventTranslation::Pointer(pe)) => {
+                if matches![pe, PointerEvent::Down(_)] {
+                    println!("Forward xlated pointer down event: {:?}", pe);
+                }
                 window_handle.pointer_event(pe);
             }
             None => {}
@@ -140,17 +156,21 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             Event::Window(window_event) => {
                 match window_event {
                     WindowEvent::Resized(window_info) => {
+                        println!("Got window resized info: {:?}", window_info);
                         let size = Size::new(window_info.logical_size().width, window_info.logical_size().height);
                         window_handle.size(size);
                     },
                     WindowEvent::Focused => {
+                        println!("Got window focused");
                         window_handle.focused(true);
                     },
                     WindowEvent::Unfocused => {
+                        println!("Got window unfocused");
                         window_handle.focused(false);
                     },
                     WindowEvent::WillClose => {
-                        todo!()
+                        println!("Got window will-close");
+                        // todo!()
                     },
                 }
             },
