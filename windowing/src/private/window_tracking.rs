@@ -77,6 +77,7 @@ impl WindowMapping {
         );
     }
 
+    #[allow(dead_code)]
     pub fn with_window_id_and_window<F: FnOnce(&WindowIdentifier, &NativeWindow) -> T, T>(
         &self,
         root_view_id: ViewId,

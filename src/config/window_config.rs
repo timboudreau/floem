@@ -30,7 +30,9 @@ pub struct WindowConfig {
     pub(crate) font_embolden: f32,
     #[allow(dead_code)]
     pub(crate) mac_os_config: Option<MacOSWindowConfig>,
+    #[allow(dead_code)]
     pub(crate) win_os_config: Option<WinOSWindowConfig>,
+    #[allow(dead_code)]
     pub(crate) web_config: Option<WebWindowConfig>,
 }
 
@@ -77,6 +79,7 @@ impl Default for WindowConfig {
     }
 }
 
+#[cfg_attr(feature = "baseview", allow(unused, dead_code))]
 impl WindowConfig {
     #[cfg(all(feature = "baseview", not(feature = "winit")))]
     fn initial_size(&self) -> Size {

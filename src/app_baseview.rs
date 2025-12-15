@@ -1,24 +1,25 @@
-use crate::{app_events::UserEvent, application::{
-        self, app_handle::ApplicationHandle, baseview_hacks::{self, setting_current_window, BaseviewPseudoEventLoop}, spi::AppHandlerInternalAPI
-    }, window::{WindowConfig, WindowCreation}, AppConfig, AppEvent, IntoView
+use crate::{
+    app_baseview_events::create_one_window,
+    app_events::UserEvent,
+    application::{
+        app_handle::ApplicationHandle,
+        baseview_hacks::{setting_current_window, BaseviewPseudoEventLoop},
+        spi::AppHandlerInternalAPI,
+    },
+    window::{WindowConfig, WindowCreation},
+    AppConfig, AppEvent, IntoView,
 };
-use super::app::*;
-use baseview::{EventStatus, Window, WindowHandler, WindowOpenOptions};
+use baseview::WindowOpenOptions;
 use floem_reactive::Runtime;
 use parking_lot::Mutex;
 use windowing::public_api::WindowIdentifier;
-
-#[cfg(feature = "crossbeam")]
-use crossbeam::channel::{unbounded as channel};
+use std::{cell::RefCell, sync::Arc};
 
 #[cfg(not(feature = "crossbeam"))]
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[cfg(feature = "crossbeam")]
-use crossbeam::channel::{Receiver, Sender};
-
-use std::{cell::RefCell, ops::Deref, sync::Arc, thread};
-use crate::AnyView;
+use crossbeam::channel::{Receiver, Sender, unbounded as channel};
 
 type EventLoopType = <ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop;
 
@@ -28,173 +29,9 @@ to it, and they need to know which window id they reference.  So, we bury the ac
 in an Arc<RefCell>.
 */
 
+#[repr(transparent)]
 pub struct Application {
-    pub(super) inner : ApplicationInner,
-}
-
-type ViewFn = Box<dyn FnOnce(WindowIdentifier) -> AnyView>;
-thread_local! {
-    static ID_TRANSFER_HACK : RefCell<Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)>> = RefCell::new(None);
-    static INNER_TRANSFER : RefCell<Option<(ApplicationInner, ViewFn)>> = RefCell::new(None);
-    // static CHILD_WINDOW_HACK : RefCell<Option<ViewFn>> = RefCell::new(None);
-}
-
-fn do_the_thing() {
-    if let Some((id, handles)) = ID_TRANSFER_HACK.take() {
-        if let Some((inner, view_fn)) = INNER_TRANSFER.take() {
-            inner.handle.borrow_mut().register_window(id, handles, view_fn);
-        } else {
-            println!("NO INNER");
-        }
-    } else {
-        println!("NO TRANSFER");
-    }
-}
-
-/// baseview *child* windows have a null pointer for their window handle at the time
-/// the creation callback runs; while `create_parented` does return a `baseview::WindowHandle`,
-/// that does not include the `DisplayHandle` needed to create gpu resources for it (although,
-/// for Mac OS the display handle is a content-free, zero sized type, perhaps it is not on other
-/// platforms).  So, we instead create a listener that, on the first event callback, morphs
-/// itself into a real listener and proceeds along its merry way.
-pub(crate) enum LateRegisteringWindowHandler {
-    AwaitingRegistration(Option<ViewFn>, ApplicationInner),
-    Ready(OneWindowHandler),
-}
-
-thread_local! {
-    static DEFERRED_REGISTER : RefCell<Option<(WindowIdentifier, windowing::public_api::BaseviewHandles, ViewFn)>> = RefCell::new(None);
-}
-
-impl LateRegisteringWindowHandler {
-
-    #[cfg_attr(debug_assertions, track_caller)]
-    pub fn new() -> Self {
-        INNER_TRANSFER.with(|it| {
-            if let Some((inner, view_fn)) = it.replace(None) {
-                Self::AwaitingRegistration(Some(view_fn), inner)
-            } else {
-                panic!("on_before_attach_new_child_window must be called immediately prior to LateRegisteringWindowHandler::new() on the same thread.");
-            }
-        })
-    }
-
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn on_first_call(&mut self, window : &mut Window, view_fn : ViewFn, inner : ApplicationInner) {
-        println!("Register the window");
-        let (id, handles) = windowing::public_api::register_window(window);
-        println!("Got {:?}, {:?} from registering the window.  Now call AppHandle to create *our* WindowHandle.", id, handles);
-
-        // Okay, and here we are *still* unable to use handles.
-        let old = DEFERRED_REGISTER.replace(Some((id, handles, view_fn)));
-        debug_assert!(old.is_none(), "Unconsumed window registration info found");
-
-        let mut result = Self::Ready(OneWindowHandler {
-            window: id,
-            app: inner,
-        });
-        println!("Replacing late registering listener now. Id: {:?}", id);
-        *self = result
-    }
-}
-
-impl WindowHandler for LateRegisteringWindowHandler {
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn on_frame(&mut self, window: &mut Window) {
-        let hack = BaseviewPseudoEventLoop::from(&mut *window);
-        application::baseview_hacks::setting_current_window(hack,move || {
-            let mut innards : Option<(ViewFn, ApplicationInner)> = None;
-            match self {
-                // We have to do the swapping of self for a Ready instance after registering outside of
-                // this match block, since we have to reassign self.
-                LateRegisteringWindowHandler::AwaitingRegistration(view_fn, inner) => {
-                    let view_fn = view_fn.take().expect("Late registration called twice - frame");
-                    println!("LateRegistering convert on paint");
-                    innards = Some((view_fn, inner.clone()));
-                },
-                LateRegisteringWindowHandler::Ready(delegate) => {
-                    application::baseview_hacks::current_window().with_mut(|m| delegate.on_frame(m));
-                    // delegate.on_frame(window);
-                    return;
-                },
-            }
-            if let Some((view_fn, inner)) = innards.take() {
-                self.on_first_call(window, view_fn, inner);
-                // We are now calling Self::Ready.
-                // self.on_frame(window);
-            } else {
-                panic!("Event: Should not be called in AwaitingRegistration state more than once.");
-            }
-        })
-    }
-
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn on_event(&mut self, window: &mut Window, event: baseview::Event) -> EventStatus {
-        let hack = BaseviewPseudoEventLoop::from(&mut *window);
-        application::baseview_hacks::setting_current_window(hack,move || {
-            let mut innards : Option<(ViewFn, ApplicationInner)> = None;
-
-            match self {
-                // We have to do the swapping of self for a Ready instance after registering outside of
-                // this match block, since we have to reassign self.
-                LateRegisteringWindowHandler::AwaitingRegistration(view_fn, inner) => {
-                    let view_fn = view_fn.take().expect("Late registration called twice - event");
-                    println!("LateRegistering convert on event : {:?}", event);
-                    innards = Some((view_fn, inner.clone()));
-                },
-                LateRegisteringWindowHandler::Ready(delegate) => {
-                    return application::baseview_hacks::current_window().with_mut(|m| delegate.on_event(m, event)).expect("Window must be set");
-                },
-            }
-            if let Some((view_fn, inner)) = innards.take() {
-                println!("Have some innards, converting.");
-                let _ = self.on_first_call(window, view_fn, inner);
-                // We are now calling Self::Ready.
-                // self.on_event(window, event)
-                EventStatus::Ignored
-            } else {
-                panic!("Event: Should not be called in AwaitingRegistration state more than once.");
-            }
-        })
-    }
-}
-
-#[cfg_attr(debug_assertions, track_caller)]
-pub(crate) fn on_before_attach_new_child_window(view_fn : ViewFn) {
-    APP_INNER.with(|inner| {
-        let inner = inner.borrow().as_ref().expect("Called outside an event callback").clone();
-        INNER_TRANSFER.set(Some((inner, view_fn)));
-    });
-}
-
-#[cfg_attr(debug_assertions, track_caller)]
-fn create_one_window(opts : WindowOpenOptions, inner : ApplicationInner, view_fn: Box<dyn FnOnce(WindowIdentifier) -> AnyView>) {
-    let mut info : Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = None;
-    let placeholder = WindowIdentifier::default();
-
-    let mut listener = OneWindowHandler {
-        window: placeholder,
-        app: inner.clone(),
-    };
-
-    INNER_TRANSFER.with(|i| {
-        i.replace(Some((inner, view_fn)));
-    });
-
-    // Well, shoot, this method never returns.
-    Window::open_blocking(opts, |win| {
-        let (window_id, inner) = windowing::public_api::register_window(win);
-        println!("Opened window as {:?}", window_id);
-        setting_current_window(BaseviewPseudoEventLoop::from(win), || {
-            let ifo : Option<(WindowIdentifier, windowing::public_api::BaseviewHandles)> = Some((window_id.clone(), inner.clone()));
-            ID_TRANSFER_HACK.with(|v| {
-                v.replace(ifo);
-            });
-            listener.window = window_id;
-            do_the_thing();
-            listener
-        })
-    });
+    pub(super) inner: ApplicationInner,
 }
 
 static PENDING_USER_EVENTS: Mutex<Option<Sender<UserEvent>>> = Mutex::new(None);
@@ -204,19 +41,22 @@ impl Application {
     pub fn run(mut self) {
         Self::on_before_run();
         for w in self.inner.initial_windows() {
-            let opts : baseview::WindowOpenOptions = w.config.map(baseview::WindowOpenOptions::from).unwrap_or(WindowOpenOptions {
-                title: "Floem window".into(),
-                size: baseview::Size::new(512., 512.),
-                scale: baseview::WindowScalePolicy::SystemScaleFactor,
-                gl_config: None,
-            });
+            let opts: baseview::WindowOpenOptions = w
+                .config
+                .map(baseview::WindowOpenOptions::from)
+                .unwrap_or(WindowOpenOptions {
+                    title: "Floem window".into(),
+                    size: baseview::Size::new(512., 512.),
+                    scale: baseview::WindowScalePolicy::SystemScaleFactor,
+                    gl_config: None,
+                });
             let copy = self.inner.clone();
             create_one_window(opts, copy, w.view_fn);
         }
     }
 
     pub(crate) fn send_proxy_event(event: UserEvent) {
-        if let Some(mut sender) = PENDING_USER_EVENTS.lock().as_ref() {
+        if let Some(sender) = PENDING_USER_EVENTS.lock().as_ref() {
             // println!("Enqueue proxy event: {:?}", event);
             let _ = sender.send(event);
         }
@@ -237,18 +77,18 @@ impl Application {
 
         #[cfg(any(target_os = "windows", target_os = "macos"))]
         muda::MenuEvent::set_event_handler(Some(move |event: muda::MenuEvent| {
-            use crate::{app_events::{add_app_update_event, AppUpdateEvent}};
+            use crate::app_events::{add_app_update_event, AppUpdateEvent};
 
             add_app_update_event(AppUpdateEvent::MenuAction {
                 action_id: event.id,
             });
         }));
         Self {
-            inner : ApplicationInner {
+            inner: ApplicationInner {
                 receiver: Arc::new(receiver),
                 handle: Arc::new(RefCell::new(handle)),
                 initial_windows: Arc::new(RefCell::new(Vec::new())),
-            }
+            },
         }
     }
 
@@ -283,61 +123,29 @@ impl Application {
         // Nudge UI when sync signals are updated from other threads.
         Runtime::set_sync_effect_waker(|| Application::send_proxy_event(UserEvent::Idle));
     }
-
-    /// Run a function that handles inbound events or timer wakeups and takes the `ApplicationHandle`.
-    /// The const-generic `USER_EVENTS` determines whether user events are also run - by using const
-    /// generics for this, we ensure that two monomorphized versions of this method are emitted into
-    /// the binary, and we don't pay a price at runtime.  Basically, the same set of calls to handle
-    /// timers and call Runtime::drain_pending_work() surround more than one kind of event processing.
-    ///
-    /// This simply allows multiple windowing-system implementations to share this code without the risk
-    /// of diverging due to having their own copies of it.
-    #[inline(always)]
-    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
-        self.inner.event_processing::<F, USER_EVENTS>(event_loop, f);
-    }
-}
-
-/// Baseview gives nothing to grab hold of to easily figure out *which* window is being painted except the
-/// identity of the handler being called (well, we could use the raw window handle as identity, but that
-/// doesn't seem immensely reliable).
-pub(crate) struct OneWindowHandler {
-    pub window : WindowIdentifier,
-    pub app : ApplicationInner,
-}
-
-unsafe impl Send for OneWindowHandler{}
-unsafe impl Sync for OneWindowHandler{}
-
-impl WindowHandler for OneWindowHandler {
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn on_frame(&mut self, window: &mut baseview::Window) {
-        self.app.on_frame(&self.window, window);
-    }
-
-    #[cfg_attr(debug_assertions, track_caller)]
-    fn on_event(&mut self, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
-        // println!("ON EVENT {:?} id {:?}", event, self.window);
-        self.app.on_baseview_event(&self.window, window, event);
-        baseview::EventStatus::Ignored
-    }
 }
 
 #[derive(Clone)]
 pub(crate) struct ApplicationInner {
+    // These need to be separately borrowable, so we can't just have
+    // Application { inner : Arc<...> } or some call sequences will be impossible.
+    //
+    // Technically these could be fields of Application, but keeping the API separate
+    // from the implementation avoids inadvertently exposing stuff that shouldn't be.
     pub(crate) receiver: Arc<Receiver<UserEvent>>,
     pub(crate) handle: Arc<RefCell<ApplicationHandle>>,
     pub(crate) initial_windows: Arc<RefCell<Vec<WindowCreation>>>,
 }
 
-thread_local! {
-    static APP_INNER : RefCell<Option<ApplicationInner>> = Default::default();
-}
-
 // This cloning may be expensive.
+/// We ephemerally set this thread local to the the application contents, so that
+/// it can be retrieved for creating baseview event listeners, which need to call it.
+/// Since the call to create the initial window does not return, there is no way
+/// to make the Application instance accessible to attach to otherwise - it consumes
+/// Application.
 #[inline(always)]
-fn setting_app_inner<F : FnOnce() -> T, T>(clone : ApplicationInner, f : F) -> T {
-    APP_INNER.with(|cell| {
+fn setting_app_inner<F: FnOnce() -> T, T>(clone: ApplicationInner, f: F) -> T {
+    crate::app_baseview_events::APP_INNER.with(|cell| {
         *cell.borrow_mut() = Some(clone);
         let result = f();
         *cell.borrow_mut() = None;
@@ -346,16 +154,16 @@ fn setting_app_inner<F : FnOnce() -> T, T>(clone : ApplicationInner, f : F) -> T
 }
 
 impl ApplicationInner {
-
+    /// Drain the initial windows configured before the application was started.
     fn initial_windows(&mut self) -> Vec<WindowCreation> {
-        let mut v : Arc<RefCell<Vec<WindowCreation>>> = Arc::new(RefCell::new(vec![]));
+        let mut v: Arc<RefCell<Vec<WindowCreation>>> = Arc::new(RefCell::new(vec![]));
         std::mem::swap(&mut v, &mut self.initial_windows);
-        let r : RefCell<Vec<WindowCreation>> = Arc::into_inner(v).unwrap();
-        let v : Vec<WindowCreation> = r.into_inner();
-        return v
+        let r: RefCell<Vec<WindowCreation>> = Arc::into_inner(v).unwrap();
+        let v: Vec<WindowCreation> = r.into_inner();
+        return v;
     }
 
-    pub fn on_event(mut self, action: impl Fn(AppEvent) + 'static) -> Self {
+    pub fn on_event(self, action: impl Fn(AppEvent) + 'static) -> Self {
         self.handle.borrow_mut().event_listener = Some(Box::new(action));
         self
     }
@@ -368,7 +176,7 @@ impl ApplicationInner {
     /// Using `None` as a configuration argument is equivalent to using
     /// `WindowConfig::default()`.
     pub fn window<V: IntoView + 'static>(
-        mut self,
+        self,
         app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
         config: Option<WindowConfig>,
     ) -> Self {
@@ -388,38 +196,66 @@ impl ApplicationInner {
     /// This simply allows multiple windowing-system implementations to share this code without the risk
     /// of diverging due to having their own copies of it.
     #[inline(always)]
-    pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
+    pub(super) fn event_processing<
+        F: FnOnce(&mut ApplicationHandle, &EventLoopType),
+        const USER_EVENTS: bool,
+    >(
+        &mut self,
+        event_loop: &EventLoopType,
+        f: F,
+    ) {
         setting_app_inner(self.clone(), || {
             self.handle.borrow_mut().handle_timer(event_loop);
             f(&mut self.handle.borrow_mut(), event_loop);
             if USER_EVENTS {
-                let events : Vec<UserEvent> = self.receiver.as_ref().try_iter().collect();
+                let events: Vec<UserEvent> = self.receiver.as_ref().try_iter().collect();
                 for event in events {
-                    self.handle.borrow_mut().handle_user_event(event_loop, event);
+                    self.handle
+                        .borrow_mut()
+                        .handle_user_event(event_loop, event);
                 }
             }
             if Runtime::has_pending_work() {
                 Runtime::drain_pending_work();
             }
         });
-        // Not much way around this
-        if let Some((window_id, handles, view_fn)) = DEFERRED_REGISTER.take() {
-            self.handle.borrow_mut().register_window(window_id, handles, view_fn);
+        // We need to do this here, or we will be borrowed at the time the listener fires and unable to
+        // get a mutable reference to the handle to create a window handle for a newly opened *child*
+        // window.  It's ugly, but works.
+        if let Some((window_id, handles, view_fn)) =
+            super::app_baseview_events::DEFERRED_REGISTER.take()
+        {
+            self.handle
+                .borrow_mut()
+                .register_window(window_id, handles, view_fn);
         }
     }
 
     #[cfg_attr(debug_assertions, track_caller)]
-    fn on_frame(&mut self, id : &WindowIdentifier, window: &mut baseview::Window) {
+    pub(super) fn on_frame(&mut self, id: &WindowIdentifier, window: &mut baseview::Window) {
+        // We create an unsafe pointer to the window that allows parts of the public API that have no access
+        // to it to have minimal access to manipulate it.  Where possible, we simply pass it in place of the
+        // &ActiveEventLoop from the winit implementation, but in some cases that is impossible without more
+        // invasive changes.
         let hack = BaseviewPseudoEventLoop::from(window);
         setting_current_window(hack, || {
-            self.event_processing::<_, true>(&hack, move |handle, w| {
+            self.event_processing::<_, true>(&hack, move |handle, _w| {
                 handle.handle_updates_for_one_window(id, &hack);
             });
         })
     }
 
     #[cfg_attr(debug_assertions, track_caller)]
-    fn on_baseview_event(&mut self, id : &WindowIdentifier, window: &mut baseview::Window, event: baseview::Event) -> baseview::EventStatus {
+    pub(super) fn on_baseview_event(
+        &mut self,
+        id: &WindowIdentifier,
+        window: &mut baseview::Window,
+        event: baseview::Event,
+    ) -> baseview::EventStatus {
+        // We create an unsafe pointer to the window that allows parts of the public API that have no access
+        // to it to have minimal access to manipulate it.  Where possible, we simply pass it in place of the
+        // &ActiveEventLoop from the winit implementation, but in some cases that is impossible without more
+        // invasive changes.
         let hack = BaseviewPseudoEventLoop::from(window);
         setting_current_window(hack, || {
             self.event_processing::<_, false>(&hack, move |handle, window_opt| {

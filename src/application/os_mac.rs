@@ -139,6 +139,7 @@ pub(super) fn mac_os_post_window_creation_config(
 /// - Centered in 30pt bar: `(10.0, 8.5, 6.0)`
 /// - Centered in 40pt bar: `(10.0, 13.5, 6.0)`
 /// - Centered in 50pt bar: `(10.0, 18.5, 6.0)`
+#[cfg_attr(feature = "baseview", allow(unused))]
 pub(super) fn setup_traffic_light_constraints_all_pixels(
     view_handle: &raw_window_handle::AppKitWindowHandle,
     leading_pixels: f64,

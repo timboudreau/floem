@@ -1,12 +1,14 @@
+use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
+use crate::style::CursorStyle;
 use adapters::{WindowResizeDirection, WindowSystemTheme};
 use peniko::kurbo::{Point, Size, Vec2};
-use windowing::public_api::NativeWindow;
-use winit::{cursor::CursorIcon,
-    dpi::{LogicalPosition, LogicalSize},
-    window::{ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData}};
-use crate::style::CursorStyle;
-use super::{window_handle::WindowHandle, window_handle_utils::WindowHandleNative};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+use windowing::public_api::NativeWindow;
+use winit::{
+    cursor::CursorIcon,
+    dpi::{LogicalPosition, LogicalSize},
+    window::{ImeCapabilities, ImeEnableRequest, ImeHint, ImePurpose, ImeRequest, ImeRequestData},
+};
 
 impl WindowHandleNative for WindowHandle {
     fn set_cursor(&mut self) {
@@ -64,10 +66,13 @@ impl WindowHandleNative for WindowHandle {
     }
 
     fn raw_window_handle(&self) -> RawWindowHandle {
-        self.window.window_handle().expect("Window should have a handle").as_raw()
+        self.window
+            .window_handle()
+            .expect("Window should have a handle")
+            .as_raw()
     }
 
-    fn set_window_theme(&self, theme : Option<WindowSystemTheme>) {
+    fn set_window_theme(&self, theme: Option<WindowSystemTheme>) {
         self.window.set_theme(theme.map(WindowSystemTheme::into))
     }
 
@@ -79,11 +84,11 @@ impl WindowHandleNative for WindowHandle {
         self.window.request_redraw();
     }
 
-    fn set_window_visible(&mut self, visible : bool) {
+    fn set_window_visible(&mut self, visible: bool) {
         self.window.set_visible(visible);
     }
 
-    fn set_ime_allowed(&mut self, allowed : bool) {
+    fn set_ime_allowed(&mut self, allowed: bool) {
         if self.window.ime_capabilities().is_some() != allowed {
             let ime = if allowed {
                 let position = LogicalPosition::new(0, 0);
@@ -115,11 +120,10 @@ impl WindowHandleNative for WindowHandle {
             .map(|caps| caps.cursor_area())
             .unwrap_or(false)
         {
-            let position =
-                winit::dpi::Position::Logical(winit::dpi::LogicalPosition::new(
-                    position.x * self.window_state.scale,
-                    position.y * self.window_state.scale,
-                ));
+            let position = winit::dpi::Position::Logical(winit::dpi::LogicalPosition::new(
+                position.x * self.window_state.scale,
+                position.y * self.window_state.scale,
+            ));
             let size = winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
                 size.width * self.window_state.scale,
                 size.height * self.window_state.scale,
@@ -132,7 +136,7 @@ impl WindowHandleNative for WindowHandle {
         }
     }
 
-    fn set_window_title(&mut self, title : &str) {
+    fn set_window_title(&mut self, title: &str) {
         self.window.set_title(title);
     }
 
@@ -144,13 +148,15 @@ impl WindowHandleNative for WindowHandle {
         let _ = self.window.drag_window();
     }
 
-    fn drag_resize_window(&mut self, direction : Option<WindowResizeDirection>) {
+    fn drag_resize_window(&mut self, direction: Option<WindowResizeDirection>) {
         // If this message came from a native windowing event, and the windowing system
         // is baseview, there is no concept of window resize directions there.
         if let Some(direction) = direction {
             let _ = self.window.drag_resize_window(direction.into());
         } else {
-            let _ = self.window.drag_resize_window(WindowResizeDirection::default().into());
+            let _ = self
+                .window
+                .drag_resize_window(WindowResizeDirection::default().into());
         }
     }
 
@@ -158,15 +164,15 @@ impl WindowHandleNative for WindowHandle {
         self.window.is_maximized()
     }
 
-    fn set_window_maximized(&mut self, maximized : bool) {
+    fn set_window_maximized(&mut self, maximized: bool) {
         self.window.set_maximized(maximized);
     }
 
-    fn set_window_minimized(&mut self, minimized : bool) {
+    fn set_window_minimized(&mut self, minimized: bool) {
         self.window.set_minimized(minimized);
     }
 
-    fn set_window_position(&mut self, delta : Vec2) {
+    fn set_window_position(&mut self, delta: Vec2) {
         let pos = self.window_position + delta;
         self.window
             .set_outer_position(winit::dpi::Position::Logical(

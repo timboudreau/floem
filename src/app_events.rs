@@ -3,8 +3,6 @@ use adapters::WindowSystemTheme;
 use floem_reactive::WriteSignal;
 use muda::MenuId;
 use windowing::public_api::WindowIdentifier;
-#[cfg(feature = "baseview")]
-use crate::AnyView;
 use crate::{action::{Timer, TimerToken}, inspector::Capture, profiler::Profile, window::WindowCreation, Application};
 
 pub(crate) type AppEventCallback = dyn Fn(AppEvent);

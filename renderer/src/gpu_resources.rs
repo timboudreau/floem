@@ -8,12 +8,12 @@
 //!
 //! Based on a [code snippet by Luke Petherbridge](https://github.com/rust-windowing/winit/issues/3560#issuecomment-2085754164).
 
-use std::{future::Future, sync::Arc};
+use std::future::Future;
+#[cfg(all(feature = "winit", not(feature = "baseview")))]
+use std::sync::Arc;
 
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{bounded as sync_channel, Receiver};
-#[cfg(feature = "baseview")]
-use raw_window_handle_06::{HasDisplayHandle, HasWindowHandle};
 #[cfg(not(feature = "crossbeam"))]
 use std::sync::mpsc::{sync_channel, Receiver};
 use wgpu::Backends;
@@ -21,8 +21,6 @@ use wgpu::Backends;
 #[cfg(all(feature = "winit", not(feature = "baseview")))]
 use winit::window::{Window, WindowId};
 
-#[cfg(all(feature = "baseview", not(feature = "winit")))]
-use baseview::WindowHandle;
 
 /// The acquired GPU resources needed for rendering with wgpu.
 #[derive(Debug, Clone)]

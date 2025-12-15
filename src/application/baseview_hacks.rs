@@ -1,5 +1,4 @@
-use std::{ops::{Deref, DerefMut}, thread};
-use baseview::{*, gl::GlContext};
+use baseview::*;
 use peniko::kurbo::Size;
 
 /*
@@ -11,14 +10,18 @@ vanish.
 We should find a better way to do this.
 */
 
-pub(crate) const NO_WINDOW : BaseviewPseudoEventLoop = BaseviewPseudoEventLoop { window : 0 };
+/// A null-object variant
+pub(crate) const NO_WINDOW: BaseviewPseudoEventLoop = BaseviewPseudoEventLoop { window: 0 };
 
 // hope we don't have to use this. Welp, we do if we don't want to change the API.
 thread_local! {
     static CURRENT_WINDOW : std::cell::RefCell<BaseviewPseudoEventLoop> = std::cell::RefCell::new(NO_WINDOW);
 }
 
-pub(crate) fn setting_current_window<F: FnOnce() -> T, T>(window : BaseviewPseudoEventLoop, f : F) -> T {
+pub(crate) fn setting_current_window<F: FnOnce() -> T, T>(
+    window: BaseviewPseudoEventLoop,
+    f: F,
+) -> T {
     CURRENT_WINDOW.with(|cell| {
         // This can be called reentrantly while creating a new window.
         let prev = cell.replace(window);
@@ -29,9 +32,7 @@ pub(crate) fn setting_current_window<F: FnOnce() -> T, T>(window : BaseviewPseud
 }
 
 pub(crate) fn current_window() -> BaseviewPseudoEventLoop {
-    CURRENT_WINDOW.with(|c| {
-        c.borrow().to_owned()
-    })
+    CURRENT_WINDOW.with(|c| c.borrow().to_owned())
 }
 
 /// This is an ephemeral wrapper for the `Window` that gets passed into our listeners - the only time it
@@ -44,7 +45,7 @@ pub(crate) fn current_window() -> BaseviewPseudoEventLoop {
 #[derive(Copy, Clone, Default)]
 pub(crate) struct BaseviewPseudoEventLoop {
     // This is hideous
-    window : usize,
+    window: usize,
 }
 
 impl std::fmt::Debug for BaseviewPseudoEventLoop {
@@ -53,8 +54,8 @@ impl std::fmt::Debug for BaseviewPseudoEventLoop {
     }
 }
 
+#[allow(unused)]
 impl BaseviewPseudoEventLoop {
-
     pub fn is_none(&self) -> bool {
         self.window == 0
     }
@@ -64,10 +65,13 @@ impl BaseviewPseudoEventLoop {
     }
 
     pub fn resize(&self, size: Size) {
-        self.with_mut(|w| w.resize(baseview::Size {
-            width: size.width,
-            height: size.height,
-        })).unwrap_or(Default::default())
+        self.with_mut(|w| {
+            w.resize(baseview::Size {
+                width: size.width,
+                height: size.height,
+            })
+        })
+        .unwrap_or(Default::default())
     }
 
     pub fn has_focus(&self) -> bool {
@@ -83,9 +87,12 @@ impl BaseviewPseudoEventLoop {
         r.gl_context()
     }
 
-    pub(crate) fn with_mut<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&mut Window<'l>) -> T) -> Option<T> {
+    pub(crate) fn with_mut<'r: 'l, 'l, T>(
+        &'r self,
+        f: impl FnOnce(&mut Window<'l>) -> T,
+    ) -> Option<T> {
         if self.window != 0 {
-            let r = unsafe { &mut * (self.window as *mut Window<'l>) };
+            let r = unsafe { &mut *(self.window as *mut Window<'l>) };
             Some(f(r))
         } else {
             println!("BaseviewPseudo called with no referent");
@@ -93,7 +100,7 @@ impl BaseviewPseudoEventLoop {
         }
     }
 
-    pub(crate) fn with_ref<'r: 'l, 'l, T>(&'r self, f : impl FnOnce(&Window<'l>) -> T) -> Option<T> {
+    pub(crate) fn with_ref<'r: 'l, 'l, T>(&'r self, f: impl FnOnce(&Window<'l>) -> T) -> Option<T> {
         if self.window != 0 {
             let r = unsafe { &*(self.window as *const Window<'l>) };
             Some(f(r))
@@ -106,9 +113,9 @@ impl BaseviewPseudoEventLoop {
 
 impl<'l> From<&mut Window<'l>> for BaseviewPseudoEventLoop {
     fn from(value: &mut Window<'l>) -> Self {
-        let pt : *mut Window<'l> = value;
+        let pt: *mut Window<'l> = value;
         Self {
-            window : pt as usize,
+            window: pt as usize,
         }
     }
 }

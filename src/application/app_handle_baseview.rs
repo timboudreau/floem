@@ -1,25 +1,38 @@
 use super::{
-    app_handle::{ApplicationHandle, *},
-    spi::{AppHandlerCommon, AppHandlerImpl, AppHandlerInternalAPI},
+    app_handle::ApplicationHandle,
     baseview_hacks::BaseviewPseudoEventLoop,
+    spi::{AppHandlerImpl, AppHandlerInternalAPI},
 };
 use crate::{
-    action::{Timer, TimerToken}, app_baseview::{on_before_attach_new_child_window, LateRegisteringWindowHandler}, app_events::{AppUpdateEvent, UserEvent}, application::baseview_hacks, context::PaintState, ext_event::EXT_EVENT_HANDLER, inspector::Capture, kurbo::Size, profiler::Profile, window::{WindowConfig, WindowCreation}, windows::window_handle::WindowHandle, AppConfig, AppEvent, View
+    action::{TimerToken},
+    app_baseview_events::{on_before_attach_new_child_window, LateRegisteringWindowHandler},
+    application::baseview_hacks::current_window,
+    context::PaintState,
+    kurbo::Size,
+    windows::window_handle::WindowHandle, View
 };
-use adapters::WindowSystemTheme;
-use baseview::{*, gl::*};
-use floem_reactive::{SignalUpdate, WriteSignal};
-use muda::MenuId;
+use baseview::*;
 use ui_events::pointer::PointerEvent;
-use std::rc::Rc;
 use ui_events_baseview::WindowEventTranslation;
 use windowing::public_api::WindowIdentifier;
 
 impl ApplicationHandle {
-
-    pub(crate) fn register_window<F: FnOnce(WindowIdentifier) -> Box<dyn View> + 'static>(&mut self, id : WindowIdentifier, handles : windowing::public_api::NativeWindowInner, view_fn: F) {
+    pub(crate) fn register_window<F: FnOnce(WindowIdentifier) -> Box<dyn View> + 'static>(
+        &mut self,
+        id: WindowIdentifier,
+        handles: windowing::public_api::NativeWindowInner,
+        view_fn: F,
+    ) {
         println!("Register window {:?} for {:?}", id, handles);
-        let handle = WindowHandle::new(Box::new(handles), None, Default::default(), view_fn, false, false, 1.);
+        let handle = WindowHandle::new(
+            Box::new(handles),
+            None,
+            Default::default(),
+            view_fn,
+            false,
+            false,
+            1.,
+        );
         self.window_handles.insert(id, handle);
     }
 }
@@ -33,14 +46,19 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         creation: crate::window::WindowCreation,
         event_loop: &Self::WindowingSystemEventLoop,
     ) {
-        self.new_window(event_loop, creation.view_fn, None, creation.config.unwrap_or_default());
+        self.new_window(
+            event_loop,
+            creation.view_fn,
+            None,
+            creation.config.unwrap_or_default(),
+        );
     }
 
     fn new(config: crate::AppConfig) -> Self {
         Self::from(config)
     }
 
-    fn remove_timer(&mut self, timer: &TimerToken, event_loop: &Self::WindowingSystemEventLoop) {
+    fn remove_timer(&mut self, timer: &TimerToken, _event_loop: &Self::WindowingSystemEventLoop) {
         self.timers.remove(timer);
     }
 
@@ -48,17 +66,17 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         &mut self,
         event_loop: &Self::WindowingSystemEventLoop,
         view_fn: Box<dyn FnOnce(WindowIdentifier) -> Box<dyn crate::View>>,
-        override_theme: Option<adapters::WindowSystemTheme>,
+        _override_theme: Option<adapters::WindowSystemTheme>,
         config: crate::window::WindowConfig,
     ) {
         let opts = baseview::WindowOpenOptions {
             title: config.title,
             size: baseview::Size {
-                width : config.size.unwrap_or(Size::new(512., 512.)).width,
+                width: config.size.unwrap_or(Size::new(512., 512.)).width,
                 height: config.size.unwrap_or(Size::new(512., 512.)).height,
             },
             scale: baseview::WindowScalePolicy::SystemScaleFactor, // pending, set?
-            gl_config: None, // XXX use in some cases?
+            gl_config: None,                                       // XXX use in some cases?
         };
 
         // Stores the view_fn in a thread_local so LateRegisteringWindowHandler::new() can grab it
@@ -69,8 +87,8 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         on_before_attach_new_child_window(view_fn);
         let _handle = event_loop.with_ref(|parent_window| {
             Window::open_parented(parent_window, opts, |child_window| {
-                println!("In callback for creating child window");
-
+                // log the window address so we can diagnose painting the wrong window
+                println!("In callback for creating child window {:?}", BaseviewPseudoEventLoop::from(child_window));
                 LateRegisteringWindowHandler::new()
             })
         });
@@ -83,12 +101,12 @@ impl AppHandlerInternalAPI for ApplicationHandle {
 
     fn handle_updates_for_all_windows(&mut self) {
         // unreachable!("This method cannot be implemented for baseview and should not be reachable.");
-        let ww = baseview_hacks::current_window();
+        let ww = current_window();
         if !ww.is_none() {
             // println!("handle_updates_for_all_windows gets a hacked window {:?}", ww);
-            let reg_id: Option<WindowIdentifier> = ww.with_mut(|r| {
-                windowing::public_api::find(r)
-            }).unwrap_or(None);
+            let reg_id: Option<WindowIdentifier> = ww
+                .with_mut(|r| windowing::public_api::find(r))
+                .unwrap_or(None);
             if let Some(id) = reg_id {
                 // println!("Will try to process updates for this window as {:?}", id);
                 self.handle_updates_for_one_window(&id, &ww);
@@ -113,7 +131,7 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         &mut self,
         window_id: WindowIdentifier,
         event: Event,
-        event_loop: &Self::WindowingSystemEventLoop,
+        _event_loop: &Self::WindowingSystemEventLoop,
     ) {
         let window_handle = match self.window_handles.get_mut(&window_id) {
             Some(window_handle) => window_handle,
@@ -144,33 +162,36 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         }
 
         match event {
-            Event::Mouse(mouse_event) => {
+            Event::Mouse(_mouse_event) => {
                 // pending
-            },
-            Event::Keyboard(keyboard_event) => {
+            }
+            Event::Keyboard(_keyboard_event) => {
                 // pending
-            },
+            }
             Event::Window(window_event) => {
                 match window_event {
                     WindowEvent::Resized(window_info) => {
                         println!("Got window resized info: {:?}", window_info);
-                        let size = Size::new(window_info.logical_size().width, window_info.logical_size().height);
+                        let size = Size::new(
+                            window_info.logical_size().width,
+                            window_info.logical_size().height,
+                        );
                         window_handle.size(size);
-                    },
+                    }
                     WindowEvent::Focused => {
                         println!("Got window focused");
                         window_handle.focused(true);
-                    },
+                    }
                     WindowEvent::Unfocused => {
                         println!("Got window unfocused");
                         window_handle.focused(false);
-                    },
+                    }
                     WindowEvent::WillClose => {
                         println!("Got window will-close");
                         // todo!()
-                    },
+                    }
                 }
-            },
+            }
         }
     }
 }
@@ -200,12 +221,15 @@ impl AppHandlerImpl for ApplicationHandle {
         self.fire_timer(event_loop);
     }
 
-    fn fire_timer(&mut self, event_loop: &Self::WindowingSystemEventLoop) {
+    fn fire_timer(&mut self, _event_loop: &Self::WindowingSystemEventLoop) {
         // do nothing
     }
 
     fn handle_gpu_resource_update(&mut self, window_id: WindowIdentifier) {
-        let handle = self.window_handles.get_mut(&window_id).expect("No window handle for id");
+        let handle = self
+            .window_handles
+            .get_mut(&window_id)
+            .expect("No window handle for id");
         if let PaintState::PendingGpuResources {
             window,
             rx,
@@ -230,7 +254,7 @@ impl AppHandlerImpl for ApplicationHandle {
         }
     }
 
-    fn handle_exit(&mut self, event_loop: &Self::WindowingSystemEventLoop) {
+    fn handle_exit(&mut self, _event_loop: &Self::WindowingSystemEventLoop) {
         // ?
         std::process::exit(0)
     }

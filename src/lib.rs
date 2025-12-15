@@ -196,6 +196,8 @@ mod app_winit;
 // #[cfg(all(feature = "baseview", not(feature = "winit")))]
 #[cfg(feature="baseview")]
 mod app_baseview;
+#[cfg(feature="baseview")]
+mod app_baseview_events;
 #[cfg(feature = "vello")]
 mod border_path_iter;
 mod clipboard;

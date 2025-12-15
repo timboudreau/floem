@@ -1,21 +1,17 @@
 #[cfg(feature = "crossbeam")]
 use crossbeam::channel::{Receiver};
 
-#[cfg(all(feature="baseview", not(feature = "winit")))]
-use std::ops::{Deref, DerefMut};
-
-#[cfg(feature="baseview")]
-use std::{cell::RefCell, sync::Arc};
-#[cfg(not(feature = "crossbeam"))]
+#[cfg(all(feature = "winit", not(feature = "crossbeam")))]
 use std::sync::mpsc::{Receiver};
 
-use crate::{app_events::UserEvent, application::spi::AppHandlerInternalAPI, AppConfig, AppEvent, WindowIdentifier};
-use floem_reactive::{Runtime};
-
+#[cfg(all(feature="winit", not(feature = "baseview")))]
 use crate::{
-    application::app_handle::ApplicationHandle,
+    application::{app_handle::ApplicationHandle, spi::AppHandlerInternalAPI},
+    window::{WindowConfig, WindowCreation}, AppConfig, AppEvent, WindowIdentifier
+};
+use crate::{
+    app_events::UserEvent,
     view::IntoView,
-    window::{WindowConfig, WindowCreation},
 };
 
 #[cfg(feature="baseview")]
@@ -38,8 +34,6 @@ pub fn launch<V: IntoView + 'static>(app_view: impl FnOnce() -> V + 'static) {
     Application::new().window(move |_| app_view(), None).run()
 }
 
-type EventLoopType = <ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop;
-
 /// Floem top level application
 /// This is the entry point of the application.
 #[cfg(all(feature="winit", not(feature = "baseview")))]
@@ -57,6 +51,9 @@ impl Default for Application {
         Self::new()
     }
 }
+
+#[cfg(all(feature="winit", not(feature = "baseview")))]
+type EventLoopType = <ApplicationHandle as AppHandlerInternalAPI>::WindowingSystemEventLoop;
 
 #[cfg(all(feature="winit", not(feature = "baseview")))]
 impl Application {
@@ -81,6 +78,8 @@ impl Application {
         app_view: impl FnOnce(WindowIdentifier) -> V + 'static,
         config: Option<WindowConfig>,
     ) -> Self {
+        use crate::window::WindowCreation;
+
         self.initial_windows.push(WindowCreation {
             view_fn: Box::new(move |window_id: WindowIdentifier| app_view(window_id).into_any()),
             config,
@@ -90,6 +89,8 @@ impl Application {
 
     /// Common pre-init tasks
     pub(crate) fn on_before_run() {
+        use floem_reactive::Runtime;
+
         Runtime::init_on_ui_thread();
         // Nudge UI when sync signals are updated from other threads.
         Runtime::set_sync_effect_waker(|| Application::send_proxy_event(UserEvent::Idle));
@@ -105,6 +106,8 @@ impl Application {
     /// of diverging due to having their own copies of it.
     #[inline(always)]
     pub(super) fn event_processing<F : FnOnce(&mut ApplicationHandle, &EventLoopType), const USER_EVENTS: bool>(&mut self, event_loop: &EventLoopType, f : F) {
+        use floem_reactive::Runtime;
+
         self.handle.handle_timer(event_loop);
         f(&mut self.handle, event_loop);
         if USER_EVENTS {

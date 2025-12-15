@@ -1,9 +1,6 @@
 pub mod swash;
 pub mod text;
 
-#[cfg(feature = "baseview")]
-mod baseview_utils;
-
 use crate::text::LayoutRun;
 use peniko::{
     kurbo::{Affine, Point, Rect, Shape, Stroke},
