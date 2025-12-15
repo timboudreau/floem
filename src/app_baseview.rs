@@ -233,6 +233,7 @@ impl ApplicationInner {
 
     #[cfg_attr(debug_assertions, track_caller)]
     pub(super) fn on_frame(&mut self, id: &WindowIdentifier, window: &mut baseview::Window) {
+        println!("ON FRAME {:#x} or {:#b} {}", id.id(), id.id(), id.id());
         // We create an unsafe pointer to the window that allows parts of the public API that have no access
         // to it to have minimal access to manipulate it.  Where possible, we simply pass it in place of the
         // &ActiveEventLoop from the winit implementation, but in some cases that is impossible without more
@@ -241,6 +242,8 @@ impl ApplicationInner {
         setting_current_window(hack, || {
             self.event_processing::<_, true>(&hack, move |handle, _w| {
                 handle.handle_updates_for_one_window(id, &hack);
+                // XXX should only be the current window
+                handle.render_one(id, &hack);
             });
         })
     }

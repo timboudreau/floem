@@ -23,6 +23,8 @@ use winit::{
     event::Ime,
 };
 
+#[cfg(feature="baseview")]
+use crate::application::baseview_hacks::current_window;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use crate::menu::MudaMenu;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
@@ -160,7 +162,8 @@ impl WindowHandle {
         let window: NativeWindow = window.into();
         WindowingSystem::store_window_id_mapping(id, window_id.into(), &window);
 
-        println!("Create window handle, GPU resources is {:?}", gpu_resources);
+        #[cfg(feature="baseview")]
+        println!("Create window handle over {:?}", current_window());
 
         let paint_state = if let Some(resources) = gpu_resources.clone() {
             let surface = resources
@@ -666,7 +669,7 @@ impl WindowHandle {
 
     pub(crate) fn render_frame(&mut self, gpu_resources: Option<GpuResources>) {
         #[cfg(feature = "baseview")]
-        println!("Render frame for {:?} in {:?} for {:?}", self.window_id, crate::application::baseview_hacks::current_window(), self.window);
+        println!("Render frame for {:?} in {:?} for {:?} cf {:?}", self.window_id, crate::application::baseview_hacks::current_window(), self.window, crate::app_baseview_control_flow::ControlFlow::get());
         // Processes updates scheduled on this frame.
         for update in mem::take(&mut self.window_state.scheduled_updates) {
             match update {

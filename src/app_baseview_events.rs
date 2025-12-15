@@ -1,12 +1,10 @@
 use crate::{
-    app_baseview::ApplicationInner,
-    application::baseview_hacks::{
+    app_baseview::ApplicationInner, app_baseview_control_flow::ControlFlow, application::baseview_hacks::{
         current_window, setting_current_window, BaseviewPseudoEventLoop,
-    },
-    AnyView, Clipboard,
+    }, AnyView, Clipboard
 };
 use baseview::{Event, EventStatus, Window, WindowHandler, WindowOpenOptions};
-use std::{cell::RefCell, sync::atomic::AtomicBool};
+use std::{cell::RefCell, ops::Deref, sync::atomic::AtomicBool};
 use windowing::public_api::*;
 
 type ViewFn = Box<dyn FnOnce(WindowIdentifier) -> AnyView>;
@@ -46,7 +44,10 @@ unsafe impl Sync for OneWindowHandler {}
 impl WindowHandler for OneWindowHandler {
     #[cfg_attr(debug_assertions, track_caller)]
     fn on_frame(&mut self, window: &mut Window) {
-        self.app.on_frame(&self.window, window);
+        // if !ControlFlow::get().check_paused() || self.app.handle.borrow().is_paint_requested_for(&self.window) {
+            println!("Not paused or have paint request, proceed for {:?}", ControlFlow::get());
+            self.app.on_frame(&self.window, window);
+        // }
     }
 
     #[cfg_attr(debug_assertions, track_caller)]

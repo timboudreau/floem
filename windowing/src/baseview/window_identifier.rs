@@ -32,6 +32,12 @@ new_key_type! {
    pub struct WindowIdentifier;
 }
 
+impl WindowIdentifier {
+    pub fn id(&self) -> u64 {
+        self.0.as_ffi()
+    }
+}
+
 impl crate::common::WindowIdDelegate for WindowIdentifier {}
 
 thread_local! {

@@ -5,6 +5,12 @@ use peniko::kurbo::{Point, Size, Vec2};
 use raw_window_handle::{RawWindowHandle};
 use windowing::public_api::NativeWindow;
 
+impl WindowHandle {
+    pub fn is_paint_requested(&self) -> bool {
+        self.window_state.request_paint
+    }
+}
+
 // Basically, almost none of this is implementable over baseview windows.
 #[allow(dead_code, unused)]
 impl WindowHandleNative for WindowHandle {

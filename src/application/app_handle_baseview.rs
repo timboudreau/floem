@@ -4,12 +4,7 @@ use super::{
     spi::{AppHandlerImpl, AppHandlerInternalAPI},
 };
 use crate::{
-    action::{TimerToken},
-    app_baseview_events::{on_before_attach_new_child_window, LateRegisteringWindowHandler},
-    application::baseview_hacks::current_window,
-    context::PaintState,
-    kurbo::Size,
-    windows::window_handle::WindowHandle, View
+    action::TimerToken, app_baseview_control_flow::ControlFlow, app_baseview_events::{on_before_attach_new_child_window, LateRegisteringWindowHandler}, application::baseview_hacks::current_window, context::PaintState, kurbo::Size, windows::window_handle::WindowHandle, View
 };
 use baseview::*;
 use ui_events::pointer::PointerEvent;
@@ -34,6 +29,20 @@ impl ApplicationHandle {
             1.,
         );
         self.window_handles.insert(id, handle);
+    }
+
+    pub fn render_one(&mut self, id : &WindowIdentifier, using : &BaseviewPseudoEventLoop) {
+        if let Some(window_handle) = self.window_handles.get_mut(id) {
+            window_handle.render_frame(self.gpu_resources.clone())
+        }
+    }
+
+    pub fn is_paint_requested_for(&self, id : &WindowIdentifier) -> bool {
+        if let Some(h) = self.window_handles.get(id) {
+            h.is_paint_requested()
+        } else {
+            false
+        }
     }
 }
 
@@ -60,6 +69,9 @@ impl AppHandlerInternalAPI for ApplicationHandle {
 
     fn remove_timer(&mut self, timer: &TimerToken, _event_loop: &Self::WindowingSystemEventLoop) {
         self.timers.remove(timer);
+        if self.timers.is_empty() {
+            ControlFlow::Wait.set();
+        }
     }
 
     fn new_window(
@@ -222,7 +234,15 @@ impl AppHandlerImpl for ApplicationHandle {
     }
 
     fn fire_timer(&mut self, _event_loop: &Self::WindowingSystemEventLoop) {
-        // do nothing
+        if self.timers.is_empty() {
+            ControlFlow::Wait.set();
+            return;
+        }
+        let deadline = self.timers.values().map(|timer| timer.deadline).min();
+        if let Some(deadline) = deadline {
+            // event_loop.set_control_flow(ControlFlow::WaitUntil(deadline));
+            ControlFlow::WaitUntil(deadline).set();
+        }
     }
 
     fn handle_gpu_resource_update(&mut self, window_id: WindowIdentifier) {

@@ -148,6 +148,9 @@ objc2-app-kit = { version = "0.3", features = [
   "NSView"
 ] }
 
+[dev-dependencies]
+serial_test = "3.2.0"
+
 [features]
 default = ["editor", "default-image-formats", "vger", "winit"]
 winit = ["dep:winit", "dep:ui-events-winit", "event/winit", "floem_renderer/winit", "windowing/winit", "adapters/winit"]
