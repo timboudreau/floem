@@ -7,7 +7,8 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-baseview = { git = "https://github.com/timboudreau/baseview.git", rev = "9a44f327979de7a57eed41a1f86eb9ee1b78df16" }
+# baseview = { git = "https://github.com/timboudreau/baseview.git", rev = "9a44f327979de7a57eed41a1f86eb9ee1b78df16" }
+baseview = { workspace = true }
 keyboard-types = "0.8.3"
 ui-events = { workspace = true, features = ["std"] }
 dpi.workspace = true

@@ -49,6 +49,7 @@ impl Application {
                     size: baseview::Size::new(512., 512.),
                     scale: baseview::WindowScalePolicy::SystemScaleFactor,
                     gl_config: None,
+                    mac_os_options: None,
                 });
             let copy = self.inner.clone();
             create_one_window(opts, copy, w.view_fn);

@@ -133,6 +133,10 @@ fn app_view(window_id: WindowIdentifier) -> impl IntoView {
             },
             Some(
                 WindowConfig::default()
+                    .undecorated(true)
+                    .with_mac_os_config(|c| {
+                        c.hide_titlebar(true)
+                    })
                     .size(Size::new(700.0, 400.0))
                     .title(name.unwrap_or_default()),
             ),

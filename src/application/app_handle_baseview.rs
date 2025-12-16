@@ -89,7 +89,10 @@ impl AppHandlerInternalAPI for ApplicationHandle {
             },
             scale: baseview::WindowScalePolicy::SystemScaleFactor, // pending, set?
             gl_config: None,                                       // XXX use in some cases?
-        };
+            mac_os_options: None,
+        }.with_mac_os_options(|opts| {
+            opts.resizable(true).unified_titlebar(true)
+        });
 
         // Stores the view_fn in a thread_local so LateRegisteringWindowHandler::new() can grab it
         // without the compiler complaining that it can't be moved into the callback below (if we
@@ -98,9 +101,14 @@ impl AppHandlerInternalAPI for ApplicationHandle {
         // [at least on mac os?] for window creation).
         on_before_attach_new_child_window(view_fn);
         let _handle = event_loop.with_ref(|parent_window| {
+            /*
             Window::open_parented(parent_window, opts, |child_window| {
                 // log the window address so we can diagnose painting the wrong window
                 println!("In callback for creating child window {:?}", BaseviewPseudoEventLoop::from(child_window));
+                LateRegisteringWindowHandler::new()
+            })
+             */
+            Window::open_secondary(parent_window, opts, |child_window| {
                 LateRegisteringWindowHandler::new()
             })
         });

@@ -41,7 +41,22 @@ impl From<WindowConfig> for baseview::WindowOpenOptions {
     fn from(value: WindowConfig) -> Self {
         let sz = value.initial_size();
         let size = baseview::Size::new(sz.width, sz.height);
-        baseview::WindowOpenOptions { title: value.title, size: size, scale: baseview::WindowScalePolicy::SystemScaleFactor, gl_config: None }
+        let mut mac = baseview::MacOSWindowOptions::default();
+        if value.undecorated {
+            mac = mac.borderless();
+        }
+        if let Some(m) = value.mac_os_config {
+            if let Some(b) = m.full_size_content_view {
+                mac = mac.full_size(b);
+            }
+            if let Some(b) = m.titlebar_hidden {
+                mac = mac.titled(b);
+            }
+            if let Some(b) = m.unified_titlebar {
+                mac = mac.unified_titlebar(b);
+            }
+        }
+        baseview::WindowOpenOptions { title: value.title, size: size, scale: baseview::WindowScalePolicy::SystemScaleFactor, gl_config: None, mac_os_options: Some(mac), }
     }
 }
 

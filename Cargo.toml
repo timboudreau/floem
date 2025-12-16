@@ -64,7 +64,8 @@ parking_lot = { version = "0.12" }
 swash = { version = "0.2" }
 muda = { version = "0.17.1", default-features = false }
 winit = { git = "https://github.com/lapce/winit", rev = "133268de675a4fda70816d78a7a1435eb972fea1", package = "floem-winit" }
-baseview = { git = "https://github.com/timboudreau/baseview.git", rev = "9a44f327979de7a57eed41a1f86eb9ee1b78df16", features = [ "opengl" ] }
+baseview = { git = "https://github.com/timboudreau/baseview.git", branch = "popups", features = [ "opengl" ] }
+
 ui-events = { version = "0.2", features = ["kurbo"] }
 ui-events-winit = { path = "./ui-events-winit", package = "ui-events-floem-winit" }
 ui-events-baseview = { path = "./ui-events-baseview" }
